@@ -1,26 +1,61 @@
 %{
 #include "parser.tab.h"
+int line_num = 1;
 %}
-
+digit [0-9]
+letter [a-zA-Z]
+alpha [0-9a-zA-Z]
+delim [ \t]+
+char [ -~]
+string (\\n|\\t|\\'|\\\\|\\\"|[^\\"'])
 %%
-"declaration_list"			return declaration_list;
-"statement_list"		return statement_list;
-[0-9][0-9]*	{  
-			printf("Token type: Number, Lexeme/Token Value: %s\n", yytext);  
-			return NUMBER; 
-                }
-[a-zA-Z][a-zA-Z0-9]* {  
-			printf("Token type: Identifier, Lexeme/Token Value: %s\n", yytext);  
-			return IDENTIFIER; 
-		     } 
-"+"		return '+';
-"-"		return '-';
-"*"		return '*';
-"{"		return '{';
-"}"		return '}';
-
-[ \t]		{ /* Do nothing */ }
+"declblock" { yylval.value = strdup(yytext);return declaration_list; }
+"codeblock" { yylval.value = strdup(yytext);return statement_list; }
+"int" { yylval.value = strdup(yytext); return TYPE; }
+"for" { return FOR; }
+"while" { return WHILE; }
+"goto" { return GOTO; }
+"print" { return PRINT; }
+"println" { return PRINTLN; }
+"read" { return READ; }
+"if" { return IF; }
+"else" { return ELSE; }
+"true" { yylval.value = strdup(yytext);return BOOLEAN; }
+"false" { yylval.value = strdup(yytext);return BOOLEAN; }
+"+" { yylval.value = strdup(yytext);return ADD; }
+"-" { yylval.value = strdup(yytext);return SUB; }
+"/" { yylval.value = strdup(yytext);return DIV; }
+"*" { yylval.value = strdup(yytext);return MUL; }
+"%" { yylval.value = strdup(yytext);return MOD; }
+"<" { yylval.value = strdup(yytext);return LT; }
+">" { yylval.value = strdup(yytext);return GT; }
+"<=" { yylval.value = strdup(yytext);return LE; }
+">=" {yylval.value = strdup(yytext);return GE; }
+"==" { yylval.value = strdup(yytext);return EQUAL; }
+"!=" { yylval.value = strdup(yytext);return NOT_EQUAL; }
+"=" { yylval.value = strdup(yytext);return EQ; }
+"+=" { yylval.value = strdup(yytext);return ADDEQ; }
+"-=" { yylval.value = strdup(yytext);return SUBEQ; }
+"&&" { yylval.value = strdup(yytext);return COND_AND; }
+"||" { yylval.value = strdup(yytext);return COND_OR; }
+"," { yylval.value = strdup(yytext);return COMMA; }
+"{" { return OB; }
+"}" { return CB; }
+"[" {return OSB; }
+"]" {return CSB; }
+"(" {return OP; }
+")" {return CP; }
+";" { yylval.value = strdup(yytext);return SC; }
+":" { yylval.value = strdup(yytext);return COL; }
+{letter}{alpha}* { yylval.value = strdup(yytext);return ID; }
+{digit}+ {yylval.value = strdup(yytext); return INTEGER;}
+\"{string}*\" { yylval.value = strdup(yytext);return STRING; }
+{delim}						/* Ignore whitespaces tabs and newlines */
+"//".*						/* Inline comments So Ignore */
+\n { line_num++; }
 .		{ 
 		  printf("Unexpected token encountered: %s\n", yytext); 
 		  return ETOK;
 		}
+
+%%
