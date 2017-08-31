@@ -26,7 +26,7 @@
 %token <value> LT GT LE GE
 %token <value> EQUAL NOT_EQUAL
 %token <value> EQ ADDEQ SUBEQ
-/*%define parse.error verbose*/
+%define parse.error verbose
 /* -------------	Left Precedence		------------- */
 
 
@@ -35,7 +35,6 @@
 %left LT GT LE GE
 %left ADD SUB
 %left MUL DIV MOD
-%nonassoc NOT
 
 %%
 program:	dl cl
@@ -88,9 +87,15 @@ Statement:
 	| Read_Statement SC
 	| Print_Statement SC
 	| PrintLN_Statement SC
+	| Arith_Expression SC
+	| Bool_Expression SC
 	;
 Read_Statement:
-	READ Variable
+	READ Variable Read_Seq
+	;
+Read_Seq:
+	/*Empty*/
+	| COMMA Variable Read_Seq 
 	;
 Print_Statement:
 	PRINT Print_Var Print_Seq
@@ -108,41 +113,41 @@ Print_Var:
 	;
 
 For_Statement:
-	FOR Variable EQ Literal COMMA Literal COMMA Literal statement_Block
-	| FOR Variable EQ Literal COMMA Literal statement_Block
+	FOR Variable EQ Arith_Expression COMMA Arith_Expression COMMA Arith_Expression statement_Block
+	| FOR Variable EQ Arith_Expression COMMA Arith_Expression statement_Block
 	;
 
 While_Statement:
-	WHILE Expression statement_Block
+	WHILE Bool_Expression statement_Block
 	;
 
 GoTo_Statement:
-	GOTO ID IF Expression
+	GOTO ID IF Bool_Expression
 	|GOTO ID
 	;
 
 Conditional:
-	IF Expression statement_Block ELSE statement_Block 
-	| IF Expression statement_Block 
+	IF Bool_Expression statement_Block ELSE statement_Block 
+	| IF Bool_Expression statement_Block 
 	;
 
 Assignment:
-	Variable EQ Expression
-	| Variable SUBEQ Expression
-	| Variable ADDEQ Expression
+	Variable EQ Arith_Expression
+	| Variable SUBEQ Arith_Expression
+	| Variable ADDEQ Arith_Expression
 	;
 
 Variable:
 	ID
-	| ID OSB Expression CSB
+	| ID OSB Arith_Expression CSB
 	;
 
 Literal:
 	INTEGER
 	| ID
-	| ID OSB Expression CSB
+	| ID OSB Arith_Expression CSB
 	;
-
+/*
 Expression:
 	Literal
 	| Expression ADD Expression 
@@ -159,8 +164,38 @@ Expression:
 	| Expression COND_OR Expression 
 	| Expression COND_AND Expression 
 	| SUB Expression 
-	| NOT Expression 
 	| OP Expression CP 
+	;
+*/
+Arith_Expression:
+	Literal
+	| Arith_Expression ADD Arith_Expression 
+	| Arith_Expression SUB Arith_Expression 
+	| Arith_Expression MUL Arith_Expression 
+	| Arith_Expression DIV Arith_Expression 
+	| Arith_Expression MOD Arith_Expression 
+	| SUB Arith_Expression 
+	| OP Arith_Expression CP 
+	;
+
+
+Bool_Literal:
+	BOOLEAN
+	| Arith_Expression LT Arith_Expression
+	| Arith_Expression GT Arith_Expression
+	| Arith_Expression LE Arith_Expression
+	| Arith_Expression GE Arith_Expression
+	| Arith_Expression EQUAL Arith_Expression
+	| Arith_Expression NOT_EQUAL Arith_Expression
+	;
+
+Bool_Expression:
+	Bool_Literal
+	| Bool_Expression COND_OR Bool_Expression
+	| Bool_Expression COND_AND Bool_Expression
+	| Bool_Expression EQUAL Bool_Expression
+	| Bool_Expression NOT_EQUAL Bool_Expression
+	| OP Bool_Expression CP
 	;
 
 %%

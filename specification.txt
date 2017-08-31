@@ -9,7 +9,14 @@ All the variables have to be declared in the declblock{....} before being used
 in the codeblock{...}. Multiple variables can be declared in the statement 
 and each declaration statement ends with a semi-colon. 
 
+
+array can be accesseed using an arithmetic expression between square brackets
+
 2. Expressions
+
+	There are two kinds of expressions
+		1. Arithmetic (Ouput is a number)
+		2. Boolean (Output is of bool type)
 
 3. for loop
 
@@ -21,14 +28,19 @@ for i = 1, 100, 2 {
 	.....
 }
 
+for var_name = Arith_Expr , Arith_Expr, Arith_Expr
+{//code block
+	
+}
+
 4. if-else statement
 
-	if expression {
+	if bool_expression {
 	....
 	}
 	....
 
-	if expression {
+	if bool_expression {
 	...
 	}
 	else {
@@ -37,7 +49,7 @@ for i = 1, 100, 2 {
 
 5. while statment
 
-	while expression {
+	while bool_expression {
 
 	}
 
@@ -45,7 +57,7 @@ for i = 1, 100, 2 {
 
 	got label
 
-	goto label if expression
+	goto label if bool_expression
 
 7. print/read
 

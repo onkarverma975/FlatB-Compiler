@@ -12,9 +12,10 @@ string (\\n|\\t|\\'|\\\\|\\\"|[^\\"'])
 "declblock" { yylval.value = strdup(yytext);return declaration_list; }
 "codeblock" { yylval.value = strdup(yytext);return statement_list; }
 "int" { yylval.value = strdup(yytext); return TYPE; }
+"bool" { yylval.value = strdup(yytext); return TYPE; }
 "for" { return FOR; }
-"while" { return WHILE; }
 "goto" { return GOTO; }
+"while" { return WHILE; }
 "print" { return PRINT; }
 "println" { return PRINTLN; }
 "read" { return READ; }
@@ -22,15 +23,15 @@ string (\\n|\\t|\\'|\\\\|\\\"|[^\\"'])
 "else" { return ELSE; }
 "true" { yylval.value = strdup(yytext);return BOOLEAN; }
 "false" { yylval.value = strdup(yytext);return BOOLEAN; }
-"+" { yylval.value = strdup(yytext);return ADD; }
 "-" { yylval.value = strdup(yytext);return SUB; }
-"/" { yylval.value = strdup(yytext);return DIV; }
+"+" { yylval.value = strdup(yytext);return ADD; }
 "*" { yylval.value = strdup(yytext);return MUL; }
+"/" { yylval.value = strdup(yytext);return DIV; }
 "%" { yylval.value = strdup(yytext);return MOD; }
-"<" { yylval.value = strdup(yytext);return LT; }
 ">" { yylval.value = strdup(yytext);return GT; }
-"<=" { yylval.value = strdup(yytext);return LE; }
+"<" { yylval.value = strdup(yytext);return LT; }
 ">=" {yylval.value = strdup(yytext);return GE; }
+"<=" { yylval.value = strdup(yytext);return LE; }
 "==" { yylval.value = strdup(yytext);return EQUAL; }
 "!=" { yylval.value = strdup(yytext);return NOT_EQUAL; }
 "=" { yylval.value = strdup(yytext);return EQ; }
@@ -39,14 +40,15 @@ string (\\n|\\t|\\'|\\\\|\\\"|[^\\"'])
 "&&" { yylval.value = strdup(yytext);return COND_AND; }
 "||" { yylval.value = strdup(yytext);return COND_OR; }
 "," { yylval.value = strdup(yytext);return COMMA; }
-"{" { return OB; }
 "}" { return CB; }
-"[" {return OSB; }
+"{" { return OB; }
 "]" {return CSB; }
-"(" {return OP; }
+"[" {return OSB; }
 ")" {return CP; }
+"(" {return OP; }
 ";" { yylval.value = strdup(yytext);return SC; }
 ":" { yylval.value = strdup(yytext);return COL; }
+"!" { yylval.value = strdup(yytext);return NOT; }
 {letter}{alpha}* { yylval.value = strdup(yytext);return ID; }
 {digit}+ {yylval.value = strdup(yytext); return INTEGER;}
 \"{string}*\" { yylval.value = strdup(yytext);return STRING; }
