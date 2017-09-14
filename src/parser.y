@@ -143,43 +143,44 @@ Variable:
 	;
 
 Literal:
-	INTEGER
+	OP Arith_Expression CP 
+	| INTEGER
 	| ID
 	| ID OSB Arith_Expression CSB
 	;
-/*
-Expression:
-	Literal
-	| Expression ADD Expression 
-	| Expression SUB Expression 
-	| Expression MUL Expression 
-	| Expression DIV Expression 
-	| Expression MOD Expression 
-	| Expression LT Expression 
-	| Expression GT Expression 
-	| Expression LE Expression 
-	| Expression GE Expression 
-	| Expression EQUAL Expression 
-	| Expression NOT_EQUAL Expression 
-	| Expression COND_OR Expression 
-	| Expression COND_AND Expression 
-	| SUB Expression 
-	| OP Expression CP 
-	;
-*/
 Arith_Expression:
-	Literal
-	| Arith_Expression ADD Arith_Expression 
-	| Arith_Expression SUB Arith_Expression 
-	| Arith_Expression MUL Arith_Expression 
-	| Arith_Expression DIV Arith_Expression 
-	| Arith_Expression MOD Arith_Expression 
-	| SUB Arith_Expression 
-	| OP Arith_Expression CP 
+	Arith_Expression ADD Arith_Expression 
+	| Arith_Expression SUB Arith_Expression	
+	| Arith_Factor
 	;
 
+Arith_Factor:
+	Arith_Factor MUL Literal 
+	| Arith_Factor DIV Literal 
+	| Arith_Factor MOD Literal 
+	| SUB Literal
+	| Literal
+	;
+
+Bool_Expression:
+	Bool_Expression COND_OR Bool_Term
+	| Bool_Expression EQUAL Bool_Term
+	| Bool_Expression NOT_EQUAL Bool_Term
+	| Bool_Term
+	;
+
+Bool_Term:
+	Bool_Term COND_AND Bool_Literal
+	| Bool_Literal
+	;
 
 Bool_Literal:
+	OP Bool_Expression CP
+	| Bool_Hola
+	| NOT Bool_Literal
+	;
+
+Bool_Hola:
 	BOOLEAN
 	| Arith_Expression LT Arith_Expression
 	| Arith_Expression GT Arith_Expression
@@ -187,15 +188,6 @@ Bool_Literal:
 	| Arith_Expression GE Arith_Expression
 	| Arith_Expression EQUAL Arith_Expression
 	| Arith_Expression NOT_EQUAL Arith_Expression
-	;
-
-Bool_Expression:
-	Bool_Literal
-	| Bool_Expression COND_OR Bool_Expression
-	| Bool_Expression COND_AND Bool_Expression
-	| Bool_Expression EQUAL Bool_Expression
-	| Bool_Expression NOT_EQUAL Bool_Expression
-	| OP Bool_Expression CP
 	;
 
 %%
