@@ -1,6 +1,9 @@
 %{
+#include <bits/stdc++.h>
 #include "parser.tab.h"
 int line_num = 1;
+#define YY_DECL extern "C" int yylex()
+	using namespace std;
 %}
 digit [0-9]
 letter [a-zA-Z]

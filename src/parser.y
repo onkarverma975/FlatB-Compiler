@@ -1,10 +1,15 @@
 %{
-  #include <stdio.h>
-  #include <stdlib.h>
-  FILE *yyin;
-  int yylex (void);
+  #include <bits/stdc++.h>
+  
+  extern "C" FILE *yyin;
+  extern "C" int errors;
+
+  extern "C" int yylex();
+  extern "C" int yyparse();
   void yyerror (char const *s);
-  extern int line_num;
+  extern "C" int line_num;
+  int errors=0;
+
 %}
 
 %union {
@@ -26,6 +31,33 @@
 %token <value> LT GT LE GE
 %token <value> EQUAL NOT_EQUAL
 %token <value> EQ ADDEQ SUBEQ
+
+/* Non-terminal types */
+
+%type <prog> Program
+%type <fields> Field_declarations
+%type <field> Field_declaration
+%type <vars> Variables
+%type <var> Variable
+%type <methods> Method_declarations
+%type <method> Method_declaration
+%type <method_args> Method_Args
+%type <method_args> Method_Arg
+%type <block> Block
+%type <var_decls> Var_declarations
+%type <var_decl> Var_declaration
+%type <stmts> Statements
+%type <stmt> Statement
+%type <assignment> Assignment
+%type <parameters> Params
+%type <method_call> Method_Call
+%type <location> Location
+%type <expr> Expression
+%type <callout_args> Callout_Args
+%type <callout_arg> Callout_Arg
+%type <literal> Literal;
+%type <mylist> Var_names
+
 %define parse.error verbose
 /* -------------	Left Precedence		------------- */
 
@@ -37,79 +69,77 @@
 %left MUL DIV MOD
 
 %%
-program:	dl cl
-	;
-
-dl: 
-	declaration_list declaration_Block 
-	;
-
-cl: 
-	statement_list statement_Block
+program:declaration_list declaration_Block statement_list statement_Block
+{
+	$$ = new Prog($2,$4);
+	start=$$;
+}
 	;
 
 declaration_Block: 
-	OB Variable_declarations CB
+	OB Variable_declarations CB {$$ = $2;}
 	;
 
 statement_Block: 
-	OB Statements CB
+	OB Statements CB {$$ = $2;}
 	;
 
 Variable_declarations:
 	/*Empty*/
-	| Variable_declaration SC Variable_declarations 
+	{
+		$$ = new fieldDecls();
+	}
+	| Variable_declarations Variable_declaration SC  {$$->push_back($2);}
 	;
 
 Variable_declaration:
-	TYPE Var_dec_name Var_dec_names
+	TYPE Var_dec_names {$$ = new fieldDecl(string($1),$2);}
 	;
 Var_dec_names:
-	/*Empty*/
-	| COMMA Var_dec_name Var_dec_names 
+	Var_dec_name {$$ = new Vars();$$->push_back($1);}
+	| Var_dec_names COMMA Var_dec_name { $$->push_back($3); }
 	;
 Var_dec_name:
-	ID
-	| ID OSB INTEGER CSB 
+	ID { $$ = new Var(string("Normal"),string($1));}
+	| ID OSB INTEGER CSB  {$$ = new intLiteral($1);}
 	;
 
-Statements: /*Empty*/
-	| Statements Statement
-	| Statements ID COL Statement 
+Statements: 
+	/*Empty*/ {$$ = new Stmts();}
+	| Statements Statement {$$->push_back($2);}
+	| Statements ID COL Statement {$$->push_back(string($2),$4);} 
 	;
 
 Statement:
-	Assignment SC
-	| For_Statement
-	| While_Statement
-	| Conditional
-	| GoTo_Statement SC
-	| Read_Statement SC
-	| Print_Statement SC
-	| PrintLN_Statement SC
-	| Arith_Expression SC
-	| Bool_Expression SC
+	Assignment SC {$$ = $1;}
+	| For_Statement { $$ = $1;}
+	| While_Statement { $$ = $1;}
+	| Conditional { $$ = $1;}
+	| GoTo_Statement SC { $$ = $1;}
+	| Read_Statement SC { $$ = $1;}
+	| Print_Statement SC { $$ = $1;}
+	| PrintLN_Statement SC { $$ = $1;}
 	;
 Read_Statement:
-	READ Variable Read_Seq
+	READ Read_Seq { $$ = new Reads();}
 	;
 Read_Seq:
-	/*Empty*/
-	| COMMA Variable Read_Seq 
+	Variable {$$->push_back($1);}
+	| Read_Seq COMMA Variable  {$$->push_back($3);}
 	;
 Print_Statement:
-	PRINT Print_Var Print_Seq
+	PRINT Print_Seq {$$ = new Prints();}
 	;
 PrintLN_Statement:
-	PRINTLN Print_Var Print_Seq
+	PRINTLN Print_Seq {$$ = new Printsln();}
 	;
 Print_Seq:
-	/*Empty*/
-	| COMMA Print_Var Print_Seq 
+	Print_Var {$$->push_back($1);}
+	| Print_Seq COMMA Print_Var  {$$->push_back($3);}
 	;
 Print_Var:
-	Variable
-	| STRING
+	Variable {$$->push_back($1, "Location");}
+	| STRING {$$ = new stringLiteral($1);}
 	;
 
 For_Statement:
@@ -122,72 +152,72 @@ While_Statement:
 	;
 
 GoTo_Statement:
-	GOTO ID IF Bool_Expression
-	|GOTO ID
+	GOTO ID IF Bool_Expression {$$ = new gotoifStmt($2,$4);}
+	|GOTO ID {$$ = new gotoifStmt($2,NULL);}
 	;
 
 Conditional:
-	IF Bool_Expression statement_Block ELSE statement_Block 
-	| IF Bool_Expression statement_Block 
+	IF Bool_Expression statement_Block ELSE statement_Block {$$ = new ifElseStmt($2,$3,$5);}
+	| IF Bool_Expression statement_Block {$$ = new ifElseStmt($2,$3,NULL);}
 	;
 
 Assignment:
-	Variable EQ Arith_Expression
-	| Variable SUBEQ Arith_Expression
-	| Variable ADDEQ Arith_Expression
+	Variable EQ Arith_Expression {$$ = new Assignment($1,string($2),$3);}
+	| Variable SUBEQ Arith_Expression {$$ = new Assignment($1,string($2),$3);}
+	| Variable ADDEQ Arith_Expression {$$ = new Assignment($1,string($2),$3);}
 	;
 
 Variable:
-	ID
-	| ID OSB Arith_Expression CSB
+	ID {$$ = new Location(string($1),string("Normal"));}
+	| ID OSB Arith_Expression CSB {$$ = new Location(string($1),string("Array"),$3);}
 	;
 
 Literal:
-	OP Arith_Expression CP 
-	| INTEGER
-	| ID
-	| ID OSB Arith_Expression CSB
+	OP Arith_Expression CP {$$ = new unExpr(string($1),$2);}
+	| INTEGER {$$ = new intLiteral($1);}
+	| ID { $$ = new Location(string($1),string("Normal"));}
+	| ID OSB Arith_Expression CSB {$$ = new Location(string($1),string("Array"),$3);}
 	;
 Arith_Expression:
-	Arith_Expression ADD Arith_Expression 
-	| Arith_Expression SUB Arith_Expression	
-	| Arith_Factor
+	Arith_Expression ADD Arith_Expression {$$ = new binExpr($1,string($2),$3);}
+	| Arith_Expression SUB Arith_Expression	{$$ = new binExpr($1,string($2),$3);}
+	| Arith_Factor { $$ = $1; }
 	;
 
 Arith_Factor:
-	Arith_Factor MUL Literal 
-	| Arith_Factor DIV Literal 
-	| Arith_Factor MOD Literal 
-	| SUB Literal
-	| Literal
+	Arith_Factor MUL Literal  {$$ = new binExpr($1,string($2),$3);}
+	| Arith_Factor DIV Literal  {$$ = new binExpr($1,string($2),$3);}
+	| Arith_Factor MOD Literal  {$$ = new binExpr($1,string($2),$3);}
+	| SUB Literal  {$$ = new unExpr(string($1),$2);}
+	| Literal {$$=$1;}
 	;
 
 Bool_Expression:
-	Bool_Expression COND_OR Bool_Term
-	| Bool_Expression EQUAL Bool_Term
-	| Bool_Expression NOT_EQUAL Bool_Term
-	| Bool_Term
+	Bool_Expression COND_OR Bool_Term {$$ = new binBoolExpr($1,string($2),$3);}
+	| Bool_Expression EQUAL Bool_Term {$$ = new binBoolExpr($1,string($2),$3);}
+	| Bool_Expression NOT_EQUAL Bool_Term {$$ = new binBoolExpr($1,string($2),$3);}
+	| Bool_Term { $$ = $1; }
 	;
 
 Bool_Term:
-	Bool_Term COND_AND Bool_Literal
-	| Bool_Literal
+	Bool_Term COND_AND Bool_Literal {$$ = new binBoolExpr($1,string($2),$3);}
+	| Bool_Literal { $$ = $1; }
 	;
 
 Bool_Literal:
-	OP Bool_Expression CP
-	| Bool_Hola
-	| NOT Bool_Literal
+	OP Bool_Expression CP {$$ = new EnclBoolExpr($2);}
+	| Bool_Hola { $$ = $1; }
+	| NOT Bool_Literal {$$ = new unBoolExpr(string($1),$2);}
 	;
 
 Bool_Hola:
-	BOOLEAN
-	| Arith_Expression LT Arith_Expression
-	| Arith_Expression GT Arith_Expression
-	| Arith_Expression LE Arith_Expression
-	| Arith_Expression GE Arith_Expression
-	| Arith_Expression EQUAL Arith_Expression
-	| Arith_Expression NOT_EQUAL Arith_Expression
+	BOOLEAN {$$ = new boolLiteral($1);}
+	| Arith_Expression LT Arith_Expression {$$ = new binExpr($1,string($2),$3);}
+	| Arith_Expression GT Arith_Expression {$$ = new binExpr($1,string($2),$3);}
+	| Arith_Expression LE Arith_Expression {$$ = new binExpr($1,string($2),$3);}
+	| Arith_Expression GE Arith_Expression {$$ = new binExpr($1,string($2),$3);}
+	| Arith_Expression EQUAL Arith_Expression {$$ = new binExpr($1,string($2),$3);}
+	| Arith_Expression NOT_EQUAL Arith_Expression {$$ = new binExpr($1,string($2),$3);}
 	;
 
 %%
