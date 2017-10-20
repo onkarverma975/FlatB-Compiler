@@ -8,7 +8,7 @@ union Node{
 	class fieldDecl* field;
 	class Vars* vars;
 	class Var* var;
-	class Block* block;
+	class statementBlock* block;
 	class varDecls* var_decls;
 	class varDecl* var_decl;
 	class Stmts* stmts;
@@ -98,39 +98,34 @@ protected:
 public:
 	void setEtype(exprType x){etype = x;}
 	exprType getEtype(){return etype;}
-	virtual string toString(){}
 	virtual void traverse(){}
-	virtual Value* codegen(){}
 };
 
-class EnclExpr:public ArithExpr{
+class EnclArithExpr:public ArithExpr{
 private:
-	class Expr* expr;
+	class ArithExpr* expr;
 public:
-	EnclExpr(class Expr*);
+	EnclExpr(class ArithExpr*);
 	void traverse();
-	Value* codegen();
 };
 
-class unExpr:public ArithExpr{
+class unArithExpr:public ArithExpr{
 private:
-	class Expr* body; /* body of expression */
+	class ArithExpr* body; /* body of expression */
 	string opr; /* Unary Expression */
 public:
-	unExpr(string,class Expr*);
+	unExpr(string,class ArithExpr*);
 	void traverse();
-	Value* codegen();
 };
 
-class binExpr:public ArithExpr{
+class binArithExpr:public ArithExpr{
 private:
-	class Expr* lhs; /* left hand side */
-	class Expr* rhs; /* right hand side */
+	class ArithExpr* lhs; /* left hand side */
+	class ArithExpr* rhs; /* right hand side */
 	string opr; /* operator in between */
 public:
-	binExpr(class Expr*, string, class Expr*);
+	binExpr(class ArithExpr*, string, class ArithExpr*);
 	void traverse();
-	Value* codegen();
 };
 
 class BoolExpr:public astNode{
@@ -141,65 +136,79 @@ public:
 	exprType getEtype(){return etype;}
 	virtual string toString(){}
 	virtual void traverse(){}
-	virtual Value* codegen(){}
 };
 
-class EnclExpr:public BoolExpr{
+class EnclBoolExpr:public BoolExpr{
 private:
-	class Expr* expr;
+	class BoolExpr* expr;
 public:
-	EnclExpr(class Expr*);
+	EnclExpr(class BoolExpr*);
 	void traverse();
-	Value* codegen();
 };
 
-class unExpr:public BoolExpr{
+class unBoolExpr:public BoolExpr{
 private:
-	class Expr* body; /* body of expression */
+	class BoolExpr* body; /* body of expression */
 	string opr; /* Unary Expression */
 public:
-	unExpr(string,class Expr*);
+	unExpr(string,class BoolExpr*);
 	void traverse();
-	Value* codegen();
 };
 
-class binExpr:public BoolExpr{
+class binBoolExpr:public BoolExpr{
 private:
-	class Expr* lhs; /* left hand side */
-	class Expr* rhs; /* right hand side */
+	class BoolExpr* lhs; /* left hand side */
+	class BoolExpr* rhs; /* right hand side */
 	string opr; /* operator in between */
 public:
-	binExpr(class Expr*, string, class Expr*);
+	binExpr(class BoolExpr*, string, class BoolExpr*);
 	void traverse();
-	Value* codegen();
 };
+
+class binBoolExpr:public BoolExpr{
+private:
+	class BoolExpr* lhs; /* left hand side */
+	class BoolExpr* rhs; /* right hand side */
+	string opr; /* operator in between */
+public:
+	binExpr(class BoolExpr*, string, class BoolExpr*);
+	void traverse();
+};
+
 
 class Location:public ArithExpr{
 private:
 	string var; /* name used in location */
 	string location_type; /* Array or normal */
-	class Expr* expr; /* if it is array then we have the address */
+	class ArithExpr* expr; /* if it is array then we have the address */
 public:
-	Location(string,string,class Expr*);
+	Location(string,string,class ArithExpr*);
 	Location(string,string);
 	void traverse();
 	string getVar();/* returns the var name */
 	bool is_array(); /* tells if its array or not */
-	class Expr* getExpr();
-	Value* codegen();
+	class ArithExpr* getExpr();
 };
 
-class Literal:public Expr{
+class aLiteral:public ArithExpr{
 protected:
 	literalType ltype; /* Integer bool or char */
 public:
 	virtual void traverse(){}
 	virtual int getValue(){}
 	virtual string toString(){}
-	virtual Value* codegen(){}
 };
 
-class intLiteral:public Literal{
+class bLiteral:public BoolExpr{
+protected:
+	literalType ltype; /* Integer bool or char */
+public:
+	virtual void traverse(){}
+	virtual int getValue(){}
+	virtual string toString(){}
+};
+
+class intLiteral:public aLiteral{
 private:
 	int value;
 public:
@@ -207,10 +216,26 @@ public:
 	void traverse();
 	int getValue();
 	string toString();
-	Value* codegen();
 };
 
-class boolLiteral:public Literal{
+
+class charLiteral:public aLiteral{
+private:
+	char value;
+public:
+	charLiteral(string);
+	void traverse();
+};
+
+class stringLiteral:public aLiteral{
+private:
+	string value;
+public:
+	stringLiteral(string);
+	void traverse();
+};
+
+class boolLiteral:public bLiteral{
 private:
 	string value;
 public:
@@ -220,32 +245,10 @@ public:
 	Value* codegen();
 };
 
-class charLiteral:public Literal{
-private:
-	char value;
-public:
-	charLiteral(string);
-	void traverse();
-};
-
-class stringLiteral:public Literal{
-private:
-	string value;
-public:
-	stringLiteral(string);
-	void traverse();
-	Value* codegen();
-};
-
 class Stmt:public astNode{
 protected:
-		stmtType stype;
 public:
 	virtual void traverse(){}
-	virtual Value* codegen(){}
-	virtual bool has_return(){return false;}
-	void setStype(stmtType x){this->stype = x;}
-	stmtType getStype(){return this->stype;}
 };
 
 class Stmts:public astNode{
@@ -256,96 +259,54 @@ public:
 	Stmts();
 	void push_back(class Stmt*);
 	void traverse();
-	bool has_return();
-	Value* codegen();
 };
 
 class Assignment:public Stmt{
 private:
 	class Location* loc;/* location to which assignment is done */
-	class Expr* expr; /* what is assigned */
+	class ArithExpr* expr; /* what is assigned */
 	string opr; /* how it is assigned = or -= or += */
 public:
-	Assignment(class Location*, string, class Expr*);
+	Assignment(class Location*, string, class ArithExpr*);
 	void traverse();
-	Value* codegen();
 };
 
-class Block:public Stmt{
+class statementBlock:public Stmt{
 private:
-	class varDecls* decls_list; /* list of variable declarations */
 	class Stmts* stmts_list; /* list of statement declarations */
 public:
-	Block(class varDecls*,class Stmts*);
+	statementBlock(class Stmts*);
 	void traverse();
-	bool has_return();
-	Value* codegen();
 };
 
-class varDecl:public astNode{
-private:
-	string type; /* type of variable declaraion */
-	vector<string> var_list; /* list of variables */
-	int cnt;
-public:
-	varDecl(string,class stringList*);
-	void push_back(string);
-	void traverse();
-	Value* codegen(map<string,llvm::AllocaInst *>&);
-};
-
-class stringList{
-private:
-	vector<string> list; /* class to store vector of strings */
-public:
-	stringList(){}
-	void push_back(string);
-	vector<string> getList();
-};
 class forStmt:public Stmt{
 private:
-	string var;/* variable to be initialised */
-	class Expr* init; /* Value for initialisation */
-	class Expr* condition; /* condition for loop */
-	class Block* body; /* body of the loop */
+	class Location* var;/* variable to be initialised */
+	class ArithExpr* min_range; 
+	class ArithExpr* max_range; 
+	class ArithExpr* step; 
+	class statementBlock* body; 
 public:
-	forStmt(string, class Expr*, class Expr*, class Block*);
+	forStmt(class Location*, class ArithExpr*, class ArithExpr*, class ArithExpr*, class statementBlock*);
 	bool has_return(){this->body->has_return();}
 	void traverse();
-	Value* codegen();
 };
 
 class ifElseStmt:public Stmt{
 private:
-	class Expr* condition; /* condition for if statement */
-	class Block* if_block; /* if block */
-	class Block* else_block;/* else block */
+	class BoolExpr* condition; /* condition for if statement */
+	class statementBlock* if_block; /* if block */
+	class statementBlock* else_block;/* else block */
 public:
-	ifElseStmt(class Expr*, class Block*, class Block*);
-	void traverse();
-	Value* codegen();
-	bool has_return(){
-		bool status = false;
-		if(if_block != NULL){
-			status = status | if_block->has_return();
-		}
-		if(else_block != NULL){
-			status = status | if_block->has_return();
-		}
-		return status;
-	}
+	ifElseStmt(class BoolExpr*, class statementBlock*, class statementBlock*);
+	void traverse();	
 };
 
-class breakStmt:public Stmt{
+class whileStmt:public Stmt{
+private:
+	class BoolExpr* condition; 
+	class statementBlock* body; 
 public:
-	breakStmt(){this->stype = stmtType::NonReturn;}
+	whileStmt(class BoolExpr*, class statementBlock*);
 	void traverse();
-	Value* codegen();
-};
-
-class continueStmt:public Stmt{
-public:
-	continueStmt(){this->stype = stmtType::NonReturn;}
-	void traverse();
-	Value* codegen();
 };

@@ -176,22 +176,22 @@ Variable:
 	;
 
 Literal:
-	OP Arith_Expression CP {$$ = new unExpr(string($1),$2);}
+	OP Arith_Expression CP {$$ = new EnclArithExpr($2);}
 	| INTEGER {$$ = new intLiteral($1);}
 	| ID { $$ = new Location(string($1),string("Normal"));}
 	| ID OSB Arith_Expression CSB {$$ = new Location(string($1),string("Array"),$3);}
 	;
 Arith_Expression:
-	Arith_Expression ADD Arith_Expression {$$ = new binExpr($1,string($2),$3);}
-	| Arith_Expression SUB Arith_Expression	{$$ = new binExpr($1,string($2),$3);}
+	Arith_Expression ADD Arith_Expression {$$ = new binArithExpr($1,string($2),$3);}
+	| Arith_Expression SUB Arith_Expression	{$$ = new binArithExpr($1,string($2),$3);}
 	| Arith_Factor { $$ = $1; }
 	;
 
 Arith_Factor:
-	Arith_Factor MUL Literal  {$$ = new binExpr($1,string($2),$3);}
-	| Arith_Factor DIV Literal  {$$ = new binExpr($1,string($2),$3);}
-	| Arith_Factor MOD Literal  {$$ = new binExpr($1,string($2),$3);}
-	| SUB Literal  {$$ = new unExpr(string($1),$2);}
+	Arith_Factor MUL Literal  {$$ = new binArithExpr($1,string($2),$3);}
+	| Arith_Factor DIV Literal  {$$ = new binArithExpr($1,string($2),$3);}
+	| Arith_Factor MOD Literal  {$$ = new binArithExpr($1,string($2),$3);}
+	| SUB Literal  {$$ = new unArithExpr(string($1),$2);}
 	| Literal {$$=$1;}
 	;
 
@@ -215,12 +215,12 @@ Bool_Literal:
 
 Bool_Hola:
 	BOOLEAN {$$ = new boolLiteral($1);}
-	| Arith_Expression LT Arith_Expression {$$ = new binExpr($1,string($2),$3);}
-	| Arith_Expression GT Arith_Expression {$$ = new binExpr($1,string($2),$3);}
-	| Arith_Expression LE Arith_Expression {$$ = new binExpr($1,string($2),$3);}
-	| Arith_Expression GE Arith_Expression {$$ = new binExpr($1,string($2),$3);}
-	| Arith_Expression EQUAL Arith_Expression {$$ = new binExpr($1,string($2),$3);}
-	| Arith_Expression NOT_EQUAL Arith_Expression {$$ = new binExpr($1,string($2),$3);}
+	| Arith_Expression LT Arith_Expression /*{$$ = new boolComp($1,string($2),$3);}*/
+	| Arith_Expression GT Arith_Expression /*{$$ = new boolComp($1,string($2),$3);}*/
+	| Arith_Expression LE Arith_Expression /*{$$ = new boolComp($1,string($2),$3);}*/
+	| Arith_Expression GE Arith_Expression /*{$$ = new boolComp($1,string($2),$3);}*/
+	| Arith_Expression EQUAL Arith_Expression /*{$$ = new boolComp($1,string($2),$3);}*/
+	| Arith_Expression NOT_EQUAL Arith_Expression /*{$$ = new boolComp($1,string($2),$3);}*/
 	;
 
 %%
