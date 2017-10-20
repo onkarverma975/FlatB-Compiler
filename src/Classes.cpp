@@ -284,8 +284,22 @@ void statementBlock::traverse(){
   TBS;
   out << "<block>\n";
   tabs_needed++;
-  decls_list->traverse();
   stmts_list->traverse();
+  tabs_needed--;
+  TBS;
+  out << "</block>\n";
+}
+
+
+declarationBlock::declarationBlock(class Stmts* decls){
+  this->decl_list = decls;
+}
+
+void declarationBlock::traverse(){
+  TBS;
+  out << "<block>\n";
+  tabs_needed++;
+  decl_list->traverse();
   tabs_needed--;
   TBS;
   out << "</block>\n";
@@ -436,4 +450,15 @@ void whileStmt::traverse(){
 whileStmt::	whileStmt(class BoolExpr* condition, class statementBlock* body){
   this->condition = condition;
   this->body = body;
+}
+
+
+void gotoStmt::traverse(){
+  cout <<"output for while statement\n" ;
+}
+
+
+gotoStmt:: gotoStmt(string location, class BoolExpr*condition){
+  this->condition = condition;
+  this->location = location;
 }

@@ -1,34 +1,41 @@
 #include <bits/stdc++.h>
 using namespace std;
+
+enum exprType { binary = 1, location = 2, literal = 3, enclExpr = 4 , Unexpr = 5};
+enum literalType { Int = 1, Bool = 2, Char = 3, String = 4 };
 union Node{
 	int number;
 	char* value;
 	class Prog* prog;
-	class fieldDecls* fields;
-	class fieldDecl* field;
-	class Vars* vars;
 	class Var* var;
-	class statementBlock* block;
-	class varDecls* var_decls;
-	class varDecl* var_decl;
-	class Stmts* stmts;
-	class Stmt* stmt;
+	class Vars* vars;
+	class fieldDecl* field;
+	class fieldDecls* fields;
+	class printCand* printcan;
+	class printCands* printcans;
+	class readCands* readcans;
 	class ArithExpr* arith_expr;
 	class BoolExpr* bool_expr;
 	class Location* location;
+	class Stmt* stmt;
+	class Stmts* stmts;
+	class forStmt* for_stmt;
+	class ifElseStmt* if_stmt;
+	class whileStmt* while_stmt;
+	class gotoStmt* goto_stmt;
+	class printStmt* print_stmt;
+	class readStmt* read_stmt;
 	class Assignment* assignment;
-	class ArithLiteral* arith_literal;
-	class BoolLiteral* bool_literal;
+	class statementBlock* stblock;
+	class declarationBlock* declblock;
+	class aLiteral* arith_literal;
+	class bLiteral* bool_literal;
 	class stringList* mylist;
 };
-class reportError{
-	/* Class for error handling */
-    public:
-        static llvm::Value* ErrorV(string str) {
-            cout<<str<<endl;
-            return 0;
-        }
-};
+
+typedef union Node YYSTYPE;
+
+#define YYSTYPE_IS_DECLARED 1
 
 class astNode{
 };
@@ -36,11 +43,10 @@ class astNode{
 
 class Prog:public astNode{
 private:
-	class fieldDecls* fields; /* list of fields */
+	class declarationBlock* decls; /* list of fields */
 	class statementBlock* statements; /* list of statement block */
 public:
-	Prog(class fieldDecls*, class statementBlock*);
-	void traverse();
+	Prog(class declarationBlock*, class statementBlock*);
 };
 
 
@@ -57,7 +63,6 @@ public:
 	bool isArray();
 	/* Methods */
 	void setDataType(string); /* Set the data Type */
-	void traverse();
 	string getName();
 	int getLength(){return length;}
 };
@@ -69,8 +74,41 @@ public:
 	Vars(){}
 	void push_back(class Var*);
 	vector<class Var*> getVarsList();
-	void traverse();
 };
+
+
+class printCand:public astNode{
+private:
+	class Location* loc;
+	class stringLiteral* str;
+	class charLiteral* chr;
+	class intLiteral* intlit;
+public:
+	printCand(class Location*);
+	printCand(class stringLiteral*);
+	printCand(class charLiteral*);
+	printCand(class intLiteral*);
+};
+
+class printCands:public astNode{
+private:
+	vector<class printCand*> vars_list;
+public:
+	void push_back(class printCand*);
+	vector<class printCand*> getVarsList();
+};
+
+
+
+class readCands:public astNode{
+private:
+	vector<class Location*> vars_list;
+public:
+	void push_back(class Location*);
+	vector<class Location*> getVarsList();
+};
+
+
 
 class fieldDecl:public astNode{
 private:
@@ -79,7 +117,6 @@ private:
 public:
 	fieldDecl(string,class Vars*);
 	vector<class Var*> getVarsList();
-	void traverse();
 };
 
 class fieldDecls:public astNode{
@@ -89,8 +126,8 @@ private:
 public:
 	fieldDecls();
 	void push_back(class fieldDecl*);
-	void traverse();
 };
+
 
 class ArithExpr:public astNode{
 protected:
@@ -98,15 +135,13 @@ protected:
 public:
 	void setEtype(exprType x){etype = x;}
 	exprType getEtype(){return etype;}
-	virtual void traverse(){}
 };
 
 class EnclArithExpr:public ArithExpr{
 private:
 	class ArithExpr* expr;
 public:
-	EnclExpr(class ArithExpr*);
-	void traverse();
+	EnclArithExpr(class ArithExpr*);
 };
 
 class unArithExpr:public ArithExpr{
@@ -114,8 +149,7 @@ private:
 	class ArithExpr* body; /* body of expression */
 	string opr; /* Unary Expression */
 public:
-	unExpr(string,class ArithExpr*);
-	void traverse();
+	unArithExpr(string,class ArithExpr*);
 };
 
 class binArithExpr:public ArithExpr{
@@ -124,8 +158,7 @@ private:
 	class ArithExpr* rhs; /* right hand side */
 	string opr; /* operator in between */
 public:
-	binExpr(class ArithExpr*, string, class ArithExpr*);
-	void traverse();
+	binArithExpr(class ArithExpr*, string, class ArithExpr*);
 };
 
 class BoolExpr:public astNode{
@@ -135,15 +168,13 @@ public:
 	void setEtype(exprType x){etype = x;}
 	exprType getEtype(){return etype;}
 	virtual string toString(){}
-	virtual void traverse(){}
 };
 
 class EnclBoolExpr:public BoolExpr{
 private:
 	class BoolExpr* expr;
 public:
-	EnclExpr(class BoolExpr*);
-	void traverse();
+	EnclBoolExpr(class BoolExpr*);
 };
 
 class unBoolExpr:public BoolExpr{
@@ -151,8 +182,7 @@ private:
 	class BoolExpr* body; /* body of expression */
 	string opr; /* Unary Expression */
 public:
-	unExpr(string,class BoolExpr*);
-	void traverse();
+	unBoolExpr(string,class BoolExpr*);
 };
 
 class binBoolExpr:public BoolExpr{
@@ -161,20 +191,8 @@ private:
 	class BoolExpr* rhs; /* right hand side */
 	string opr; /* operator in between */
 public:
-	binExpr(class BoolExpr*, string, class BoolExpr*);
-	void traverse();
+	binBoolExpr(class BoolExpr*, string, class BoolExpr*);
 };
-
-class binBoolExpr:public BoolExpr{
-private:
-	class BoolExpr* lhs; /* left hand side */
-	class BoolExpr* rhs; /* right hand side */
-	string opr; /* operator in between */
-public:
-	binExpr(class BoolExpr*, string, class BoolExpr*);
-	void traverse();
-};
-
 
 class Location:public ArithExpr{
 private:
@@ -184,7 +202,6 @@ private:
 public:
 	Location(string,string,class ArithExpr*);
 	Location(string,string);
-	void traverse();
 	string getVar();/* returns the var name */
 	bool is_array(); /* tells if its array or not */
 	class ArithExpr* getExpr();
@@ -194,7 +211,6 @@ class aLiteral:public ArithExpr{
 protected:
 	literalType ltype; /* Integer bool or char */
 public:
-	virtual void traverse(){}
 	virtual int getValue(){}
 	virtual string toString(){}
 };
@@ -203,7 +219,6 @@ class bLiteral:public BoolExpr{
 protected:
 	literalType ltype; /* Integer bool or char */
 public:
-	virtual void traverse(){}
 	virtual int getValue(){}
 	virtual string toString(){}
 };
@@ -213,7 +228,6 @@ private:
 	int value;
 public:
 	intLiteral(int);
-	void traverse();
 	int getValue();
 	string toString();
 };
@@ -224,7 +238,6 @@ private:
 	char value;
 public:
 	charLiteral(string);
-	void traverse();
 };
 
 class stringLiteral:public aLiteral{
@@ -232,23 +245,22 @@ private:
 	string value;
 public:
 	stringLiteral(string);
-	void traverse();
 };
 
 class boolLiteral:public bLiteral{
 private:
 	string value;
+	class ArithExpr* lhs;
+	class ArithExpr* rhs;
 public:
 	boolLiteral(string);
-	void traverse();
+	boolLiteral(class ArithExpr*, string, class ArithExpr*);
 	string toString();
-	Value* codegen();
 };
 
 class Stmt:public astNode{
 protected:
 public:
-	virtual void traverse(){}
 };
 
 class Stmts:public astNode{
@@ -258,7 +270,6 @@ private:
 public:
 	Stmts();
 	void push_back(class Stmt*);
-	void traverse();
 };
 
 class Assignment:public Stmt{
@@ -268,15 +279,20 @@ private:
 	string opr; /* how it is assigned = or -= or += */
 public:
 	Assignment(class Location*, string, class ArithExpr*);
-	void traverse();
 };
 
-class statementBlock:public Stmt{
+class statementBlock:public astNode{
 private:
-	class Stmts* stmts_list; /* list of statement declarations */
+	class Stmts* stmts_list;
 public:
 	statementBlock(class Stmts*);
-	void traverse();
+};
+
+class declarationBlock:public astNode{
+private:
+	class fieldDecls* decl_list; 
+public:
+	declarationBlock(class fieldDecls*);
 };
 
 class forStmt:public Stmt{
@@ -286,10 +302,10 @@ private:
 	class ArithExpr* max_range; 
 	class ArithExpr* step; 
 	class statementBlock* body; 
+	int step_int;
 public:
 	forStmt(class Location*, class ArithExpr*, class ArithExpr*, class ArithExpr*, class statementBlock*);
-	bool has_return(){this->body->has_return();}
-	void traverse();
+	forStmt(class Location*, class ArithExpr*, class ArithExpr*, int , class statementBlock*);
 };
 
 class ifElseStmt:public Stmt{
@@ -299,7 +315,6 @@ private:
 	class statementBlock* else_block;/* else block */
 public:
 	ifElseStmt(class BoolExpr*, class statementBlock*, class statementBlock*);
-	void traverse();	
 };
 
 class whileStmt:public Stmt{
@@ -308,5 +323,32 @@ private:
 	class statementBlock* body; 
 public:
 	whileStmt(class BoolExpr*, class statementBlock*);
-	void traverse();
+};
+class codeLocation:public astNode{
+private:
+	string name;
+	int line_num;
+public:
+};
+
+class gotoStmt:public Stmt{
+private:
+	string location;
+	class BoolExpr* condition; 
+public:
+	gotoStmt(string, class BoolExpr*);
+};
+
+class printStmt:public Stmt{
+private:
+	class printCands* print;
+public:
+	printStmt(int flag, class printCands*);
+};
+
+class readStmt:public Stmt{
+private:
+	class readCands* read;
+public:
+	readStmt(class readCands*);
 };
