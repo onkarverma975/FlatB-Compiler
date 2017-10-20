@@ -81,7 +81,7 @@ declaration_Block:
 	;
 
 statement_Block: 
-	OB Statements CB {$$ = $2;}
+	OB Statements CB {$$ = new Block($2);}
 	;
 
 Variable_declarations:
@@ -101,13 +101,13 @@ Var_dec_names:
 	;
 Var_dec_name:
 	ID { $$ = new Var(string("Normal"),string($1));}
-	| ID OSB INTEGER CSB  {$$ = new intLiteral($1);}
+	| ID OSB INTEGER CSB  { $$ = new Var(string("Array"),string($1),$3);}
 	;
 
 Statements: 
 	/*Empty*/ {$$ = new Stmts();}
 	| Statements Statement {$$->push_back($2);}
-	| Statements ID COL Statement {$$->push_back(string($2),$4);} 
+	| Statements ID COL Statement { $$->push_back($4);} 
 	;
 
 Statement:
@@ -144,16 +144,19 @@ Print_Var:
 
 For_Statement:
 	FOR Variable EQ Arith_Expression COMMA Arith_Expression COMMA Arith_Expression statement_Block
+	{$$ = new forStmt($2,$4,$6,$8,$9);}
 	| FOR Variable EQ Arith_Expression COMMA Arith_Expression statement_Block
+	{$$ = new forStmt($2,$4,$6,1,$9);}
 	;
 
 While_Statement:
 	WHILE Bool_Expression statement_Block
+	{$$ = new whileStmt($2,$3);}
 	;
 
 GoTo_Statement:
-	GOTO ID IF Bool_Expression {$$ = new gotoifStmt($2,$4);}
-	|GOTO ID {$$ = new gotoifStmt($2,NULL);}
+	GOTO ID IF Bool_Expression {$$ = new gotoStmt($2,$4);}
+	|GOTO ID {$$ = new gotoStmt($2,NULL);}
 	;
 
 Conditional:

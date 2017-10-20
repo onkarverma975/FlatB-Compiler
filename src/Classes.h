@@ -1,6 +1,26 @@
 #include <bits/stdc++.h>
 using namespace std;
-
+union Node{
+	int number;
+	char* value;
+	class Prog* prog;
+	class fieldDecls* fields;
+	class fieldDecl* field;
+	class Vars* vars;
+	class Var* var;
+	class Block* block;
+	class varDecls* var_decls;
+	class varDecl* var_decl;
+	class Stmts* stmts;
+	class Stmt* stmt;
+	class ArithExpr* arith_expr;
+	class BoolExpr* bool_expr;
+	class Location* location;
+	class Assignment* assignment;
+	class ArithLiteral* arith_literal;
+	class BoolLiteral* bool_literal;
+	class stringList* mylist;
+};
 class reportError{
 	/* Class for error handling */
     public:
@@ -11,8 +31,18 @@ class reportError{
 };
 
 class astNode{
-	virtual Value* codegen(){}
 };
+
+
+class Prog:public astNode{
+private:
+	class fieldDecls* fields; /* list of fields */
+	class statementBlock* statements; /* list of statement block */
+public:
+	Prog(class fieldDecls*, class statementBlock*);
+	void traverse();
+};
+
 
 class Var:public astNode{
 private:
@@ -29,20 +59,17 @@ public:
 	void setDataType(string); /* Set the data Type */
 	void traverse();
 	string getName();
-	Value* codegen();
 	int getLength(){return length;}
 };
 
 class Vars:public astNode{
 private:
 	vector<class Var*> vars_list;
-	int cnt;
 public:
 	Vars(){}
 	void push_back(class Var*);
 	vector<class Var*> getVarsList();
 	void traverse();
-	Value* codegen();
 };
 
 class fieldDecl:public astNode{
@@ -53,7 +80,6 @@ public:
 	fieldDecl(string,class Vars*);
 	vector<class Var*> getVarsList();
 	void traverse();
-	Value* codegen();
 };
 
 class fieldDecls:public astNode{
@@ -64,10 +90,9 @@ public:
 	fieldDecls();
 	void push_back(class fieldDecl*);
 	void traverse();
-	Value* codegen();
 };
 
-class Expr:public astNode{
+class ArithExpr:public astNode{
 protected:
 	exprType etype; /* Binary or unary or literal or location */
 public:
@@ -78,7 +103,7 @@ public:
 	virtual Value* codegen(){}
 };
 
-class EnclExpr:public Expr{
+class EnclExpr:public ArithExpr{
 private:
 	class Expr* expr;
 public:
@@ -87,7 +112,7 @@ public:
 	Value* codegen();
 };
 
-class unExpr:public Expr{
+class unExpr:public ArithExpr{
 private:
 	class Expr* body; /* body of expression */
 	string opr; /* Unary Expression */
@@ -97,7 +122,7 @@ public:
 	Value* codegen();
 };
 
-class binExpr:public Expr{
+class binExpr:public ArithExpr{
 private:
 	class Expr* lhs; /* left hand side */
 	class Expr* rhs; /* right hand side */
@@ -108,7 +133,48 @@ public:
 	Value* codegen();
 };
 
-class Location:public Expr{
+class BoolExpr:public astNode{
+protected:
+	exprType etype; /* Binary or unary or literal or location */
+public:
+	void setEtype(exprType x){etype = x;}
+	exprType getEtype(){return etype;}
+	virtual string toString(){}
+	virtual void traverse(){}
+	virtual Value* codegen(){}
+};
+
+class EnclExpr:public BoolExpr{
+private:
+	class Expr* expr;
+public:
+	EnclExpr(class Expr*);
+	void traverse();
+	Value* codegen();
+};
+
+class unExpr:public BoolExpr{
+private:
+	class Expr* body; /* body of expression */
+	string opr; /* Unary Expression */
+public:
+	unExpr(string,class Expr*);
+	void traverse();
+	Value* codegen();
+};
+
+class binExpr:public BoolExpr{
+private:
+	class Expr* lhs; /* left hand side */
+	class Expr* rhs; /* right hand side */
+	string opr; /* operator in between */
+public:
+	binExpr(class Expr*, string, class Expr*);
+	void traverse();
+	Value* codegen();
+};
+
+class Location:public ArithExpr{
 private:
 	string var; /* name used in location */
 	string location_type; /* Array or normal */
@@ -282,16 +348,4 @@ public:
 	continueStmt(){this->stype = stmtType::NonReturn;}
 	void traverse();
 	Value* codegen();
-};
-
-class Prog:public astNode{
-private:
-	string name; /* name of the class */
-	class methodDecls* methods; /* list of methods */
-	class fieldDecls* fields; /* list of fields */
-public:
-	Prog(string name,class fieldDecls*,class methodDecls*);
-	void traverse();
-	Value* codegen();
-	void generateCode();
 };
