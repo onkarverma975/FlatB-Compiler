@@ -1,8 +1,6 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-enum exprType { binary = 1, location = 2, literal = 3, enclExpr = 4 , Unexpr = 5};
-enum literalType { Int = 1, Bool = 2, Char = 3, String = 4 };
 union Node{
 	int number;
 	char* value;
@@ -82,7 +80,7 @@ private:
 	class Location* loc;
 	class stringLiteral* str;
 	class charLiteral* chr;
-	class intLiteral* intlit;
+	class intLiteral* int_lit;
 public:
 	printCand(class Location*);
 	printCand(class stringLiteral*);
@@ -92,7 +90,7 @@ public:
 
 class printCands:public astNode{
 private:
-	vector<class printCand*> vars_list;
+	vector<class printCand*> printcans;
 public:
 	void push_back(class printCand*);
 	vector<class printCand*> getVarsList();
@@ -131,10 +129,7 @@ public:
 
 class ArithExpr:public astNode{
 protected:
-	exprType etype; /* Binary or unary or literal or location */
 public:
-	void setEtype(exprType x){etype = x;}
-	exprType getEtype(){return etype;}
 };
 
 class EnclArithExpr:public ArithExpr{
@@ -163,11 +158,7 @@ public:
 
 class BoolExpr:public astNode{
 protected:
-	exprType etype; /* Binary or unary or literal or location */
 public:
-	void setEtype(exprType x){etype = x;}
-	exprType getEtype(){return etype;}
-	virtual string toString(){}
 };
 
 class EnclBoolExpr:public BoolExpr{
@@ -209,18 +200,12 @@ public:
 
 class aLiteral:public ArithExpr{
 protected:
-	literalType ltype; /* Integer bool or char */
 public:
-	virtual int getValue(){}
-	virtual string toString(){}
 };
 
 class bLiteral:public BoolExpr{
 protected:
-	literalType ltype; /* Integer bool or char */
 public:
-	virtual int getValue(){}
-	virtual string toString(){}
 };
 
 class intLiteral:public aLiteral{
@@ -252,6 +237,7 @@ private:
 	string value;
 	class ArithExpr* lhs;
 	class ArithExpr* rhs;
+	string op;
 public:
 	boolLiteral(string);
 	boolLiteral(class ArithExpr*, string, class ArithExpr*);
@@ -341,7 +327,8 @@ public:
 
 class printStmt:public Stmt{
 private:
-	class printCands* print;
+	class printCands* print_candidates;
+	int new_line;
 public:
 	printStmt(int flag, class printCands*);
 };

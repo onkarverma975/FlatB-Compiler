@@ -57,7 +57,6 @@
 %type <assignment> Assignment
 %type <stblock> statement_Block
 %type <declblock> declaration_Block
-%type <arith_literal> Literal;
 %type <bool_literal> Bool_Literal;
 
 %define parse.error verbose
@@ -173,10 +172,6 @@ Variable:
 	| ID OSB Arith_Expression CSB {$$ = new Location(string($1),string("Array"),$3);}
 	;
 
-Literal:
-	INTEGER {$$ = new intLiteral($1);}
-	| Variable {$$ = $1;}
-	;
 Arith_Expression:
 	Arith_Expression ADD Arith_Expression {$$ = new binArithExpr($1,string($2),$3);}
 	| Arith_Expression SUB Arith_Expression	{$$ = new binArithExpr($1,string($2),$3);}
@@ -192,7 +187,8 @@ Arith_Factor:
 	;
 Arith_Factor1:
 	OP Arith_Factor CP {$$ = new EnclArithExpr($2);}
-	| Literal {$$ = $1;}
+	| INTEGER {$$ = new intLiteral($1);}
+	| Variable {$$ = $1;}
 	;
 
 Bool_Expression:
