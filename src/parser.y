@@ -43,7 +43,7 @@
 %type <printcan> Print_Var
 %type <printcans> Print_Seq
 %type <readcans> Read_Seq
-%type <arith_expr> Arith_Expression Arith_Factor
+%type <arith_expr> Arith_Expression Arith_Factor Arith_Factor1
 %type <bool_expr> Bool_Expression Bool_Term Bool_Factor
 %type <location> Variable
 %type <stmts> Statements
@@ -184,11 +184,15 @@ Arith_Expression:
 	;
 
 Arith_Factor:
-	Arith_Factor MUL Literal  {$$ = new binArithExpr($1,string($2),$3);}
-	| Arith_Factor DIV Literal  {$$ = new binArithExpr($1,string($2),$3);}
-	| Arith_Factor MOD Literal  {$$ = new binArithExpr($1,string($2),$3);}
-	| SUB Literal  {$$ = new unArithExpr(string($1),$2);}
-	| Literal {$$=$1;}
+	Arith_Factor MUL Arith_Factor1  {$$ = new binArithExpr($1,string($2),$3);}
+	| Arith_Factor DIV Arith_Factor1  {$$ = new binArithExpr($1,string($2),$3);}
+	| Arith_Factor MOD Arith_Factor1  {$$ = new binArithExpr($1,string($2),$3);}
+	| SUB Arith_Factor1  {$$ = new unArithExpr(string($1),$2);}
+	| Arith_Factor1 {$$=$1;}
+	;
+Arith_Factor1:
+	OP Arith_Factor CP {$$ = new EnclArithExpr($2);}
+	| Literal {$$ = $1;}
 	;
 
 Bool_Expression:

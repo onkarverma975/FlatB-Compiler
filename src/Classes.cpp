@@ -10,16 +10,6 @@ Prog::Prog(class fieldDecls* decls, class statementBlock* statements){
   this->statements = statements;
 }
 
-void Prog::traverse(){
-  TBS;
-  out << "<program>\n";
-  tabs_needed++;
-  fields->traverse();
-  methods->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</program>\n";
-}
 
 vector<class Var*> Vars::getVarsList(){
   return vars_list;
@@ -30,11 +20,6 @@ void Vars::push_back(class Var* var){
 }
 
 
-void Vars::push_back(){
-	for(int i=0;i<vars_list.size();i++){
-		vars_list[i].traverse();
-	}
-}
 
 Var::Var(string declType, string name, unsigned int length){
   this->declType = declType;
@@ -49,16 +34,6 @@ Var::Var(string declType, string name){
 }
 
 
-void Var::traverse(){
-  TBS;
-  out << declType << endl;
-  TBS;
-  out << "<declaration name=\"" << name << "\" type=\"" << dataType << "\" ";
-  if(declType.compare("Array") == 0){
-    out << "size=\"" << length << "\" ";
-  }
-  out << "/>\n";
-}
 
 
 bool Var::isArray(){
@@ -81,18 +56,6 @@ void fieldDecls::push_back(class fieldDecl* var){
 }
 
 
-void fieldDecls::traverse(){
-  TBS;
-  out << "<field_declarations count=\"" << cnt << "\">\n";
-  tabs_needed++;
-  for (int i = 0; i < decl_list.size(); i++){
-    decl_list[i]->traverse();
-  }
-  tabs_needed--;
-  TBS;
-  out << "</field_declarations>\n";
-
-}
 
 fieldDecls::fieldDecls(){
   this->cnt = 0;
@@ -107,12 +70,6 @@ vector<class Var*> fieldDecl::getVarsList(){
   return var_list;
 }
 
-
-void fieldDecl::traverse(){
-  for(int i = 0;  i < var_list.size(); i++){
-    var_list[i]->traverse();
-  }
-}
 
 fieldDecl::fieldDecl(string dataType, class Vars* vars){
   this->dataType = dataType;
@@ -145,36 +102,6 @@ binArithExpr::binArithExpr(class Expr* lhs, string opr, class Expr* rhs){
   this->etype = exprType::binary;
 }
 
-void EnclArithExpr::traverse(){
-  expr->traverse();
-}
-
-void binArithExpr::traverse(){
-  TBS;
-  out << "<binary_expression type=\"" << (opr) <<"\">\n";
-  tabs_needed++;
-  lhs->traverse();
-  rhs->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</binary_expression>\n";
-}
-
-void unArithExpr::traverse(){
-  TBS;
-  string operation  = "Unary Negitive";
-  if(opr == "!"){
-    operation = "Unary NOT";
-  }
-  out << "<unary_expression type=\"" << operation <<"\">\n";
-  tabs_needed++;
-  body->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</unary_expression>\n";
-}
-
-
 EnclBoolExpr::EnclBoolExpr(class Expr* expr){
   this->expr = expr;
   this->etype = exprType::enclExpr;
@@ -193,63 +120,12 @@ binBoolExpr::binBoolExpr(class Expr* lhs, string opr, class Expr* rhs){
   this->etype = exprType::binary;
 }
 
-void EnclBoolExpr::traverse(){
-  expr->traverse();
-}
-
-void binBoolExpr::traverse(){
-  TBS;
-  out << "<binary_expression type=\"" << (opr) <<"\">\n";
-  tabs_needed++;
-  lhs->traverse();
-  rhs->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</binary_expression>\n";
-}
-
-void unBoolExpr::traverse(){
-  TBS;
-  string operation  = "Unary Negitive";
-  if(opr == "!"){
-    operation = "Unary NOT";
-  }
-  out << "<unary_expression type=\"" << operation <<"\">\n";
-  tabs_needed++;
-  body->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</unary_expression>\n";
-}
-
-
 stringLiteral::stringLiteral(string val){
 
   val = val.substr(1,val.length()-2);
   val = replace_newline(val);
   this->value = val;
   this->ltype = literalType::String;
-}
-
-void stringLiteral::traverse(){
-  TBS;
-  out << "<string value=\"" << value << "\" />\n";
-}
-
-
-void intLiteral::traverse(){
-  TBS;
-  out << "<integer value=\"" << value << "\" />\n";
-}
-
-void boolLiteral::traverse(){
-  TBS;
-  out << "<boolean value=\"" << value << "\" />\n";
-}
-
-void charLiteral::traverse(){
-  TBS;
-  out << "<char value=\"" << value << "\" />\n";
 }
 
 intLiteral::intLiteral(int value){
@@ -280,29 +156,10 @@ statementBlock::statementBlock(class Stmts* stmts){
   this->stmts_list = stmts;
 }
 
-void statementBlock::traverse(){
-  TBS;
-  out << "<block>\n";
-  tabs_needed++;
-  stmts_list->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</block>\n";
-}
 
 
 declarationBlock::declarationBlock(class Stmts* decls){
   this->decl_list = decls;
-}
-
-void declarationBlock::traverse(){
-  TBS;
-  out << "<block>\n";
-  tabs_needed++;
-  decl_list->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</block>\n";
 }
 
 Stmts::Stmts(){
@@ -315,18 +172,6 @@ void Stmts::push_back(class Stmt* stmt){
   cnt++;
 }
 
-void Stmts::traverse(){
-  TBS;
-  out << "<statements count=\"" << cnt << "\">\n";
-  tabs_needed++;
-  for(int i = 0; i < stmts.size(); i++){
-    stmts[i]->traverse();
-  }
-  tabs_needed--;
-  TBS;
-  out << "</statements>\n";
-}
-
 Assignment::Assignment(class Location* loc, string oper, class Expr* expr){
   this->stype = stmtType::NonReturn;
   this->loc = loc;
@@ -335,62 +180,6 @@ Assignment::Assignment(class Location* loc, string oper, class Expr* expr){
 }
 
 
-void Assignment::traverse(){
-  TBS;
-  out << "<assignment>\n";
-  tabs_needed++;
-  TBS;
-  out << "<LHS name =\"" << loc->getVar() << "\">\n";
-  if(loc->is_array()){
-    tabs_needed++;
-    loc->getExpr()->traverse();
-    tabs_needed--;
-  }
-  TBS;
-  out << "</LHS>\n";
-  TBS;
-  out << "<operation =\"" << (opr) <<"\">\n";
-  TBS;
-  out << "<RHS>\n";
-  tabs_needed++;
-  expr->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</RHS>\n";
-  tabs_needed--;
-  TBS;
-  out << "</assignment>\n";
-}
-
-
-
-void forStmt::traverse(){
-  TBS;
-  out << "<for_statement>\n";
-  tabs_needed++;
-  TBS;
-  out << "<initialisation>\n";
-  tabs_needed++;
-  TBS;
-  out << "<variable name=\"" << var << "\" />\n";
-  init->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</initialisation>\n";
-  TBS;
-  out << "<condition>\n";
-  tabs_needed++;
-  condition->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</condition>\n";
-  tabs_needed++;
-  body->traverse();
-  tabs_needed--;
-  tabs_needed--;
-  TBS;
-  out << "</for_statement>\n";
-}
 
 
 forStmt::forStmt(class Location* loc, class ArithExpr* min_range, class ArithExpr* max_range, class ArithExpr* step , class statementBlock* body){
@@ -409,54 +198,10 @@ ifElseStmt::ifElseStmt(class Expr* cond, class Block* block1, class Block* block
 }
 
 
-void ifElseStmt::traverse(){
-  TBS;
-  out << "<if_else_statement>\n";
-  tabs_needed++;
-  TBS;
-  out << "<condition>\n";
-  tabs_needed++;
-  condition->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</condition>\n";
-  TBS;
-  out << "<ifblock>\n";
-  tabs_needed++;
-  if_block->traverse();
-  tabs_needed--;
-  TBS;
-  out << "</ifblock>\n";
-  if(else_block!=NULL){
-    TBS;
-    out << "<else_block>\n";
-    tabs_needed++;
-    else_block->traverse();
-    tabs_needed--;
-    TBS;
-    out << "</elseblock>\n";
-  }
-  tabs_needed--;
-  TBS;
-  out << "</if_else_statement>\n";
-}
-
-
-void whileStmt::traverse(){
-  cout <<"output for while statement\n" ;
-}
-
-
 whileStmt::	whileStmt(class BoolExpr* condition, class statementBlock* body){
   this->condition = condition;
   this->body = body;
 }
-
-
-void gotoStmt::traverse(){
-  cout <<"output for while statement\n" ;
-}
-
 
 gotoStmt:: gotoStmt(string location, class BoolExpr*condition){
   this->condition = condition;
