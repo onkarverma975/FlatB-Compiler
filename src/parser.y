@@ -1,6 +1,7 @@
 %{
   #include "Classes.h"
   #include <bits/stdc++.h>
+  #include <ctime>
   
   extern "C" FILE *yyin;
   extern "C" int errors;
@@ -240,7 +241,14 @@ int main(int argc, char *argv[])
 	
 	if(start){
 		Visitor * visitor = new interVisitor();
+		clock_t t;
+    	t = clock();
+
 		start->accept(visitor);
+		t = clock() - t;
+    	double time_taken = ((double)t)/CLOCKS_PER_SEC; // in seconds
+    	cout << time_taken << endl;
+
 	}
 
 }
