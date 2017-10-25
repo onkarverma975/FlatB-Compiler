@@ -278,19 +278,14 @@ public:
 	intLiteral(int);
 	int getValue(){return value;}
     int accept(Visitor *v) {
+    	// cout << value << endl;
 		return v->visit(this);
     }
     int accept(Visitor *v, int value) {
+    	// cout << value << endl;
+
 		return v->visit(this);
     }
-};
-
-
-class charLiteral:public aLiteral{
-private:
-	char value;
-public:
-	charLiteral(string);
 };
 
 class stringLiteral:public astNode{
@@ -302,6 +297,14 @@ public:
     string accept(Visitor *v) {
 		return v->visit(this);
     }
+};
+
+
+class charLiteral:public aLiteral{
+private:
+	char value;
+public:
+	charLiteral(string);
 };
 
 class boolLiteral:public bLiteral{

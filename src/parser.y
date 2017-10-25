@@ -20,7 +20,7 @@
 
 %token declaration_list
 %token statement_list
-%token <number> INTEGER
+%token <value> INTEGER
 %token <value> BOOLEAN ID TYPE STRING
 %token ETOK
 %token PRINT PRINTLN READ
@@ -100,7 +100,7 @@ Var_dec_names:
 	;
 Var_dec_name:
 	ID { $$ = new Var(string("Normal"),string($1));}
-	| ID OSB INTEGER CSB  { $$ = new Var(string("Array"),string($1),$3);}
+	| ID OSB INTEGER CSB  { $$ = new Var(string("Array"),string($1),stoi($3));}
 	;
 
 Statements: 
@@ -137,7 +137,7 @@ Print_Seq:
 Print_Var:
 	Variable { $$ = new printCand($1); }
 	| STRING 	{$$ = new printCand(new stringLiteral($1));}
-	| INTEGER 	{$$ = new printCand(new intLiteral($1));}
+	| INTEGER 	{$$ = new printCand(new intLiteral(stoi($1)));}
 	;
 
 For_Statement:
@@ -188,7 +188,7 @@ Arith_Factor:
 	;
 Arith_Factor1:
 	OP Arith_Factor CP {$$ = $2;}
-	| INTEGER {$$ = new intLiteral($1);}
+	| INTEGER {$$ = new intLiteral(stoi($1));}
 	| Variable {$$ = $1;}
 	;
 

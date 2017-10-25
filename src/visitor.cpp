@@ -154,7 +154,7 @@ void Visitor::visit(class printCands* obj){
 
 void Visitor::visit(class printCand* obj){
 	type = obj->getType();
-	if(type=="int"){
+	if(type=="integer"){
 		cout << obj->getInt()->accept(this);
 	}
 	else if(type=="string"){
@@ -190,17 +190,17 @@ void Visitor::visit(class Assignment* obj){
 	string opr = obj->getOpr();
 	int rhsvalue = obj->getRhs()->accept(this);
 	//idea pass the value of rhs operator to the accept of the location operator
-	// switch(opr){
-	// 	case "=":{
-
-	// 	}
-	// 	case "+=":{
-			
-	// 	}
-	// 	case "-=":{
-			
-	// 	}
-	// }
+	if(opr=="="){
+		obj->getLhs()->accept(this,rhsvalue);
+	}
+	else if(opr=="+="){
+		int val = obj->getLhs()->accept(this);
+		obj->getLhs()->accept(this,val+rhsvalue);
+	}
+	else if(opr=="-="){
+		int val = obj->getLhs()->accept(this);
+		obj->getLhs()->accept(this,val-rhsvalue);
+	}
 }
 
 bool Visitor::visit(class boolLiteral* obj){

@@ -1420,7 +1420,7 @@ yyreduce:
 
   case 11:
 #line 103 "parser.y" /* yacc.c:1646  */
-    { (yyval.var) = new Var(string("Array"),string((yyvsp[-3].value)),(yyvsp[-1].number));}
+    { (yyval.var) = new Var(string("Array"),string((yyvsp[-3].value)),stoi((yyvsp[-1].value)));}
 #line 1425 "parser.tab.c" /* yacc.c:1646  */
     break;
 
@@ -1540,7 +1540,7 @@ yyreduce:
 
   case 31:
 #line 140 "parser.y" /* yacc.c:1646  */
-    {(yyval.printcan) = new printCand(new intLiteral((yyvsp[0].number)));}
+    {(yyval.printcan) = new printCand(new intLiteral(stoi((yyvsp[0].value))));}
 #line 1545 "parser.tab.c" /* yacc.c:1646  */
     break;
 
@@ -1672,7 +1672,7 @@ yyreduce:
 
   case 53:
 #line 191 "parser.y" /* yacc.c:1646  */
-    {(yyval.arith_expr) = new intLiteral((yyvsp[0].number));}
+    {(yyval.arith_expr) = new intLiteral(stoi((yyvsp[0].value)));}
 #line 1677 "parser.tab.c" /* yacc.c:1646  */
     break;
 
