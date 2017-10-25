@@ -1,4 +1,5 @@
 #include <bits/stdc++.h>
+#include "visitor.h"
 using namespace std;
 
 union Node{
@@ -36,6 +37,7 @@ typedef union Node YYSTYPE;
 #define YYSTYPE_IS_DECLARED 1
 
 class astNode{
+public:
 };
 
 
@@ -45,6 +47,11 @@ private:
 	class statementBlock* statements; /* list of statement block */
 public:
 	Prog(class declarationBlock*, class statementBlock*);
+	class declarationBlock* getDecls(){return decls;}
+	class statementBlock* getStmts(){return statements;}
+    void accept(Visitor * v) {
+		v->visit(this);
+    }
 };
 
 
@@ -53,16 +60,21 @@ private:
 	string declType; /* Array or Normal */
 	string name; /* Name of the variable */
 	string dataType; /* type of variable */
-	unsigned int length; /* if it is an Array then length */
+	int length; /* if it is an Array then length */
 public:
 	/* Constructors */
-	Var(string,string,unsigned int);
+	Var(string,string, int);
 	Var(string,string);
 	bool isArray();
-	/* Methods */
-	void setDataType(string); /* Set the data Type */
-	string getName();
-	int getLength(){return length;}
+	/* Methods */  
+	void setDataType(string datatype){this->dataType = datatype;}
+	string getName(){return name;}
+	unsigned int getLength(){return length;}
+	string getType(){return declType;}
+	string getDataType(){return dataType;}
+	void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class Vars:public astNode{
@@ -72,6 +84,9 @@ public:
 	Vars(){}
 	void push_back(class Var*);
 	vector<class Var*> getVarsList();
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 
@@ -115,6 +130,10 @@ private:
 public:
 	fieldDecl(string,class Vars*);
 	vector<class Var*> getVarsList();
+	string getDataType(){return dataType;}
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class fieldDecls:public astNode{
@@ -124,12 +143,17 @@ private:
 public:
 	fieldDecls();
 	void push_back(class fieldDecl*);
+	vector<class fieldDecl*> getDeclList(){return decl_list;}
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 
 class ArithExpr:public astNode{
 protected:
 public:
+	virtual int accept(Visitor *);
 };
 
 class EnclArithExpr:public ArithExpr{
@@ -137,6 +161,9 @@ private:
 	class ArithExpr* expr;
 public:
 	EnclArithExpr(class ArithExpr*);
+	int accept(Visitor * v) {
+		v->visit(this);
+    }
 };
 
 class unArithExpr:public ArithExpr{
@@ -145,6 +172,9 @@ private:
 	string opr; /* Unary Expression */
 public:
 	unArithExpr(string,class ArithExpr*);
+	int accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class binArithExpr:public ArithExpr{
@@ -154,6 +184,12 @@ private:
 	string opr; /* operator in between */
 public:
 	binArithExpr(class ArithExpr*, string, class ArithExpr*);
+    int accept(Visitor *v) {
+		v->visit(this);
+    }
+    class ArithExpr* getLhs(){return lhs;}
+    class ArithExpr* getRhs(){return rhs;}
+    string getOpr(){return opr;}
 };
 
 class BoolExpr:public astNode{
@@ -247,6 +283,7 @@ public:
 class Stmt:public astNode{
 protected:
 public:
+	virtual void accept(Visitor *);
 };
 
 class Stmts:public astNode{
@@ -256,6 +293,10 @@ private:
 public:
 	Stmts();
 	void push_back(class Stmt*);
+	vector<class Stmt*> getStmts(){return stmts;}
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class Assignment:public Stmt{
@@ -265,6 +306,12 @@ private:
 	string opr; /* how it is assigned = or -= or += */
 public:
 	Assignment(class Location*, string, class ArithExpr*);
+	class Location* getLhs(){return loc};
+	class ArithExpr* getRhs(){return expr;}
+	string getOpr(){return opr;} 
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class statementBlock:public astNode{
@@ -272,6 +319,10 @@ private:
 	class Stmts* stmts_list;
 public:
 	statementBlock(class Stmts*);
+	class Stmts* getStatements(){return stmts_list;}
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class declarationBlock:public astNode{
@@ -279,6 +330,10 @@ private:
 	class fieldDecls* decl_list; 
 public:
 	declarationBlock(class fieldDecls*);
+	class fieldDecls* getFieldDecls(){return decl_list;}
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class forStmt:public Stmt{
@@ -288,10 +343,21 @@ private:
 	class ArithExpr* max_range; 
 	class ArithExpr* step; 
 	class statementBlock* body; 
-	int step_int;
+	int   step_int;
+	int   flag;
 public:
 	forStmt(class Location*, class ArithExpr*, class ArithExpr*, class ArithExpr*, class statementBlock*);
 	forStmt(class Location*, class ArithExpr*, class ArithExpr*, int , class statementBlock*);
+	class Location* getVar(){return var};
+	int getForm(){return flag; }
+	class ArithExpr* getMin(){return min_range; }
+	class ArithExpr* getMax(){return max_range; }
+	class ArithExpr* getStepExpr(){return step; }
+	class statementBlock* getBlock(){return body; }
+	int getStepInt(){return step_int; }
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class ifElseStmt:public Stmt{
@@ -301,6 +367,12 @@ private:
 	class statementBlock* else_block;/* else block */
 public:
 	ifElseStmt(class BoolExpr*, class statementBlock*, class statementBlock*);
+	class statementBlock* getIfBlock(){return if_block; }
+	class BoolExpr* getCond(){return condition; }
+	class statementBlock* getElseBlock(){return else_block; }
+	void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class whileStmt:public Stmt{
@@ -309,12 +381,11 @@ private:
 	class statementBlock* body; 
 public:
 	whileStmt(class BoolExpr*, class statementBlock*);
-};
-class codeLocation:public astNode{
-private:
-	string name;
-	int line_num;
-public:
+	class BoolExpr* getCond(){return condition; }
+	class statementBlock* getBlock(){return body; }
+	void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class gotoStmt:public Stmt{
@@ -331,6 +402,11 @@ private:
 	int new_line;
 public:
 	printStmt(int flag, class printCands*);
+	class printCands* getPrintCands(){return print_candidates;}
+	int getNLFlag(){return new_line;}
+	void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class readStmt:public Stmt{
@@ -338,4 +414,8 @@ private:
 	class readCands* read;
 public:
 	readStmt(class readCands*);
+	class readCands* getReadCands(){return read;}
+	void accept(Visitor *v) {
+		v->visit(this);
+    }
 };

@@ -3,7 +3,6 @@
 #include "Classes.h"
 
 using namespace std;
-#define TBS cout << '\t';
 
 Prog::Prog(class declarationBlock* decls, class statementBlock* statements){
   this->decls = decls;
@@ -21,7 +20,7 @@ void Vars::push_back(class Var* var){
 
 
 
-Var::Var(string declType, string name, unsigned int length){
+Var::Var(string declType, string name, int length){
   this->declType = declType;
   this->name = name;
   this->length = length;
@@ -39,16 +38,6 @@ Var::Var(string declType, string name){
 bool Var::isArray(){
   return (declType.compare("Array") == 0);
 }
-
-void Var::setDataType(string datatype){
-  /* Sets the data type for the variable */
-  this->dataType = datatype;
-}
-
-string Var::getName(){
-  return name;
-}
-
 
 void fieldDecls::push_back(class fieldDecl* var){
   decl_list.push_back(var);
@@ -159,7 +148,8 @@ forStmt::forStmt(class Location* var, class ArithExpr* min_range, class ArithExp
   this->min_range = min_range;
   this->max_range = max_range;
   this->step = step;
-  this->body = body; 
+  this->body = body;
+  this->flag = 1;
 }
 
 forStmt::forStmt(class Location* var, class ArithExpr* min_range, class ArithExpr*max_range, int step_int, class statementBlock* body)
@@ -169,6 +159,7 @@ forStmt::forStmt(class Location* var, class ArithExpr* min_range, class ArithExp
   this->max_range = max_range;
   this->step_int = step_int;
   this->body = body; 
+  this->flag = 0;
 }
 
 ifElseStmt::ifElseStmt(class BoolExpr* cond, class statementBlock* block1, class statementBlock* block2){

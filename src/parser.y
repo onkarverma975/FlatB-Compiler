@@ -10,7 +10,7 @@
   void yyerror (char const *s);
   extern "C" int line_num;
   int errors=0;
-
+  class Prog* start=NULL;
 %}
 
 %union {
@@ -71,6 +71,7 @@
 program:declaration_list declaration_Block statement_list statement_Block
 {
 	$$ = new Prog($2,$4);
+	start = $$;
 }
 	;
 
@@ -236,6 +237,10 @@ int main(int argc, char *argv[])
 	yyin = fopen(argv[1], "r");
 
 	yyparse();
+	if(start){
+		Visitor * visitor = new Visitor();
+		start->accept(visitor);
+	}
 }
 
 
