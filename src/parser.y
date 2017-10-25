@@ -187,7 +187,7 @@ Arith_Factor:
 	| Arith_Factor1 {$$=$1;}
 	;
 Arith_Factor1:
-	OP Arith_Factor CP {$$ = new EnclArithExpr($2);}
+	OP Arith_Factor CP {$$ = $2;}
 	| INTEGER {$$ = new intLiteral($1);}
 	| Variable {$$ = $1;}
 	;
@@ -205,7 +205,7 @@ Bool_Term:
 	;
 
 Bool_Factor:
-	OP Bool_Expression CP {$$ = new EnclBoolExpr($2);}
+	OP Bool_Expression CP {$$ = $2;}
 	| Bool_Literal { $$ = $1; }
 	| NOT Bool_Factor {$$ = new unBoolExpr(string($1),$2);}
 	;

@@ -1666,7 +1666,7 @@ yyreduce:
 
   case 52:
 #line 190 "parser.y" /* yacc.c:1646  */
-    {(yyval.arith_expr) = new EnclArithExpr((yyvsp[-1].arith_expr));}
+    {(yyval.arith_expr) = (yyvsp[-1].arith_expr);}
 #line 1671 "parser.tab.c" /* yacc.c:1646  */
     break;
 
@@ -1720,7 +1720,7 @@ yyreduce:
 
   case 61:
 #line 208 "parser.y" /* yacc.c:1646  */
-    {(yyval.bool_expr) = new EnclBoolExpr((yyvsp[-1].bool_expr));}
+    {(yyval.bool_expr) = (yyvsp[-1].bool_expr);}
 #line 1725 "parser.tab.c" /* yacc.c:1646  */
     break;
 

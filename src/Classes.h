@@ -94,13 +94,19 @@ class printCand:public astNode{
 private:
 	class Location* loc;
 	class stringLiteral* str;
-	class charLiteral* chr;
 	class intLiteral* int_lit;
+	string type;
 public:
+	string getType(){return type;}
+	class intLiteral* getInt(){return int_lit;}
+	class stringLiteral* getString(){return str;}
+	class Location* getLocation(){return loc;}
 	printCand(class Location*);
 	printCand(class stringLiteral*);
-	printCand(class charLiteral*);
 	printCand(class intLiteral*);
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class printCands:public astNode{
@@ -108,7 +114,10 @@ private:
 	vector<class printCand*> printcans;
 public:
 	void push_back(class printCand*);
-	vector<class printCand*> getVarsList();
+	vector<class printCand*> getVarsList(){return printcans;}
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 
@@ -118,7 +127,10 @@ private:
 	vector<class Location*> vars_list;
 public:
 	void push_back(class Location*);
-	vector<class Location*> getVarsList();
+	vector<class Location*> getVarsList(){return vars_list;}
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 
@@ -153,18 +165,10 @@ public:
 class ArithExpr:public astNode{
 protected:
 public:
-	virtual int accept(Visitor *);
+	virtual int accept(Visitor *) = 0;
+	virtual int accept(Visitor *, int) = 0;
 };
 
-class EnclArithExpr:public ArithExpr{
-private:
-	class ArithExpr* expr;
-public:
-	EnclArithExpr(class ArithExpr*);
-	int accept(Visitor * v) {
-		v->visit(this);
-    }
-};
 
 class unArithExpr:public ArithExpr{
 private:
@@ -172,8 +176,13 @@ private:
 	string opr; /* Unary Expression */
 public:
 	unArithExpr(string,class ArithExpr*);
+	class ArithExpr* getExpr(){return body;}
+	string getOpr(){return opr;}
 	int accept(Visitor *v) {
 		v->visit(this);
+    }
+    int accept(Visitor *v, int value) {
+		return v->visit(this);
     }
 };
 
@@ -190,19 +199,17 @@ public:
     class ArithExpr* getLhs(){return lhs;}
     class ArithExpr* getRhs(){return rhs;}
     string getOpr(){return opr;}
+    int accept(Visitor *v, int value) {
+		return v->visit(this);
+    }
 };
 
 class BoolExpr:public astNode{
 protected:
 public:
+	virtual bool accept(Visitor *) = 0;
 };
 
-class EnclBoolExpr:public BoolExpr{
-private:
-	class BoolExpr* expr;
-public:
-	EnclBoolExpr(class BoolExpr*);
-};
 
 class unBoolExpr:public BoolExpr{
 private:
@@ -210,6 +217,11 @@ private:
 	string opr; /* Unary Expression */
 public:
 	unBoolExpr(string,class BoolExpr*);
+	class BoolExpr* getExpr(){return body;} 
+	string getOpr(){return opr;} 
+	bool accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class binBoolExpr:public BoolExpr{
@@ -219,6 +231,12 @@ private:
 	string opr; /* operator in between */
 public:
 	binBoolExpr(class BoolExpr*, string, class BoolExpr*);
+	bool accept(Visitor *v) {
+		v->visit(this);
+    }
+    class BoolExpr* getLhs(){return lhs;}
+    class BoolExpr* getRhs(){return rhs;}
+    string getOpr(){return opr;} 
 };
 
 class Location:public ArithExpr{
@@ -229,9 +247,18 @@ private:
 public:
 	Location(string,string,class ArithExpr*);
 	Location(string,string);
-	string getVar();/* returns the var name */
-	bool is_array(); /* tells if its array or not */
-	class ArithExpr* getExpr();
+	string getVar(){return var;}/* returns the var name */
+	string getType(){return location_type;}
+	bool is_array(); 
+	class ArithExpr* getExpr(){return expr;}
+	//value fetch
+    int accept(Visitor *v) {
+		return v->visit(this);
+    }
+    //assignment
+    int accept(Visitor *v, int value) {
+		return v->visit(this, value);
+    }
 };
 
 class aLiteral:public ArithExpr{
@@ -249,8 +276,13 @@ private:
 	int value;
 public:
 	intLiteral(int);
-	int getValue();
-	string toString();
+	int getValue(){return value;}
+    int accept(Visitor *v) {
+		return v->visit(this);
+    }
+    int accept(Visitor *v, int value) {
+		return v->visit(this);
+    }
 };
 
 
@@ -261,11 +293,15 @@ public:
 	charLiteral(string);
 };
 
-class stringLiteral:public aLiteral{
+class stringLiteral:public astNode{
 private:
 	string value;
 public:
 	stringLiteral(string);
+	string getValue(){return value;}
+    string accept(Visitor *v) {
+		return v->visit(this);
+    }
 };
 
 class boolLiteral:public bLiteral{
@@ -274,16 +310,24 @@ private:
 	class ArithExpr* lhs;
 	class ArithExpr* rhs;
 	string op;
+	string type;
 public:
 	boolLiteral(string);
 	boolLiteral(class ArithExpr*, string, class ArithExpr*);
-	string toString();
+	string getValue(){return value;}
+	string getType(){return type;}
+	string getOpr(){return op;}
+	class ArithExpr* getLhs(){return lhs;}
+	class ArithExpr* getRhs(){return rhs;}
+    bool accept(Visitor *v) {
+		return v->visit(this);
+    }
 };
 
 class Stmt:public astNode{
 protected:
 public:
-	virtual void accept(Visitor *);
+	virtual void accept(Visitor *) = 0;
 };
 
 class Stmts:public astNode{
@@ -306,7 +350,7 @@ private:
 	string opr; /* how it is assigned = or -= or += */
 public:
 	Assignment(class Location*, string, class ArithExpr*);
-	class Location* getLhs(){return loc};
+	class Location* getLhs(){return loc;}
 	class ArithExpr* getRhs(){return expr;}
 	string getOpr(){return opr;} 
     void accept(Visitor *v) {
@@ -348,7 +392,7 @@ private:
 public:
 	forStmt(class Location*, class ArithExpr*, class ArithExpr*, class ArithExpr*, class statementBlock*);
 	forStmt(class Location*, class ArithExpr*, class ArithExpr*, int , class statementBlock*);
-	class Location* getVar(){return var};
+	class Location* getVar(){return var;}
 	int getForm(){return flag; }
 	class ArithExpr* getMin(){return min_range; }
 	class ArithExpr* getMax(){return max_range; }
@@ -394,6 +438,11 @@ private:
 	class BoolExpr* condition; 
 public:
 	gotoStmt(string, class BoolExpr*);
+	string getLocation(){return location;}
+	class BoolExpr* getCond(){return condition;}
+    void accept(Visitor *v) {
+		v->visit(this);
+    }
 };
 
 class printStmt:public Stmt{

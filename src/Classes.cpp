@@ -64,9 +64,6 @@ fieldDecl::fieldDecl(string dataType, class Vars* vars){
 }
 
 
-EnclArithExpr::EnclArithExpr(class ArithExpr* expr){
-  this->expr = expr;
-}
 
 unArithExpr::unArithExpr(string opr, class ArithExpr* expr){
   this->opr = opr;
@@ -79,9 +76,6 @@ binArithExpr::binArithExpr(class ArithExpr* lhs, string opr, class ArithExpr* rh
   this->opr = opr;
 }
 
-EnclBoolExpr::EnclBoolExpr(class BoolExpr* expr){
-  this->expr = expr;
-}
 
 unBoolExpr::unBoolExpr(string opr, class BoolExpr* expr){
   this->opr = opr;
@@ -106,6 +100,7 @@ intLiteral::intLiteral(int value){
 
 boolLiteral::boolLiteral(string value){
   this->value = value;
+  this->type = "value";
 }
 
 charLiteral::charLiteral(string val){
@@ -193,15 +188,18 @@ void printCands::push_back(class printCand* cand){
   this->printcans.push_back(cand);
 }
 printCand::printCand(class Location* cand){
+  type = "location";
   this->loc = cand;
 }
 
 printCand::printCand(class stringLiteral* cand){
   this->str = cand;
+  type = "string";
 }
 
 printCand::printCand(class intLiteral* cand){
   this->int_lit = cand;
+  type = "integer";
 }
 
 Location::Location(string var, string location_type, class ArithExpr* expr){
@@ -218,4 +216,5 @@ boolLiteral::boolLiteral(class ArithExpr* lhs, string op , class ArithExpr* rhs)
   this->lhs = lhs;
   this->op = op;
   this->rhs = rhs;
+  this->type = "comp";
 }
