@@ -1,11 +1,8 @@
 declblock{
 	int i;
-	int a[10];
+	int a,b;
 }
 
 codeblock{
-	a[0]=10;
-	a[1]=1;
-	println a[1];
-}
 
+}

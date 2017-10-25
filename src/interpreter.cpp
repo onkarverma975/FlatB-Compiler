@@ -11,7 +11,7 @@ string type;
 //4 : assign
 //5 : use
 int newLine;
-int Visitor::visit(class binArithExpr* obj){
+int interVisitor::visit(class binArithExpr* obj){
 	int left_val = obj->getLhs()->accept(this);
 	int right_val = obj->getRhs()->accept(this);
 	string op = obj->getOpr();
@@ -38,36 +38,36 @@ int Visitor::visit(class binArithExpr* obj){
 	
 }
 
-void Visitor::visit(class Prog* obj){
+void interVisitor::visit(class Prog* obj){
 	obj->getDecls()->accept(this);
 	obj->getStmts()->accept(this);
 }
-void Visitor::visit(class declarationBlock* obj){
+void interVisitor::visit(class declarationBlock* obj){
 	obj->getFieldDecls()->accept(this);
 }
-void Visitor::visit(class statementBlock* obj){
+void interVisitor::visit(class statementBlock* obj){
 	obj->getStatements()->accept(this);
 }
 
-void Visitor::visit(class fieldDecls* obj){
+void interVisitor::visit(class fieldDecls* obj){
 	for(auto cs : obj->getDeclList()){
 		cs->accept(this);
 	}
 }
-void Visitor::visit(class fieldDecl* obj){
+void interVisitor::visit(class fieldDecl* obj){
 	type = obj->getDataType();
 	for(auto cs : obj->getVarsList()){
 		cs->accept(this);
 	}
 }
 
-void Visitor::visit(class Vars* obj){
+void interVisitor::visit(class Vars* obj){
 	for(auto cs : obj->getVarsList()){
 		cs->accept(this);
 	}
 }
 
-void Visitor::visit(class Var* obj){
+void interVisitor::visit(class Var* obj){
 	obj->setDataType(type);
 	string decl_type = obj->getType();
 	string name = obj->getName();
@@ -81,12 +81,12 @@ void Visitor::visit(class Var* obj){
 	}
 }
 
-void Visitor::visit(class Stmts* obj){
+void interVisitor::visit(class Stmts* obj){
 	for(auto cs : obj->getStmts()){
 		cs->accept(this);
 	}
 }
-void Visitor::visit(class forStmt* obj){
+void interVisitor::visit(class forStmt* obj){
 	class statementBlock * block = obj->getBlock();
 	int low, high, step;	
 	class Location* var=obj->getVar();
@@ -114,13 +114,13 @@ void Visitor::visit(class forStmt* obj){
 		}
 	}
 }
-void Visitor::visit(class whileStmt* obj){
+void interVisitor::visit(class whileStmt* obj){
 	while(obj->getCond()->accept(this)){
 		obj->getBlock()->accept(this);
 	}
 }
 
-void Visitor::visit(class ifElseStmt* obj){
+void interVisitor::visit(class ifElseStmt* obj){
 	if(obj->getCond()->accept(this)){
 		obj->getIfBlock()->accept(this);
 	}
@@ -130,29 +130,29 @@ void Visitor::visit(class ifElseStmt* obj){
 }
 
 
-void Visitor::visit(class gotoStmt* obj){
+void interVisitor::visit(class gotoStmt* obj){
 	if(obj->getCond()->accept(this)){
 		
 		// obj->getIfBlock()->accept(this);
 	}
 }
 
-void Visitor::visit(class printStmt* obj){
+void interVisitor::visit(class printStmt* obj){
 	newLine = obj->getNLFlag();
 	obj->getPrintCands()->accept(this);
 }
 
-void Visitor::visit(class readStmt* obj){
+void interVisitor::visit(class readStmt* obj){
 	obj->getReadCands()->accept(this);
 }
 
-void Visitor::visit(class printCands* obj){
+void interVisitor::visit(class printCands* obj){
 	for(auto cs : obj->getVarsList()){
 		cs->accept(this);
 	}
 }
 
-void Visitor::visit(class printCand* obj){
+void interVisitor::visit(class printCand* obj){
 	type = obj->getType();
 	if(type=="integer"){
 		cout << obj->getInt()->accept(this);
@@ -169,7 +169,7 @@ void Visitor::visit(class printCand* obj){
 	}
 }
 
-void Visitor::visit(class readCands* obj){
+void interVisitor::visit(class readCands* obj){
 	for(auto cs : obj->getVarsList()){
 		int temp;
 		cin >> temp;
@@ -186,7 +186,7 @@ void Visitor::visit(class readCands* obj){
 
 
 //pending
-void Visitor::visit(class Assignment* obj){
+void interVisitor::visit(class Assignment* obj){
 	string opr = obj->getOpr();
 	int rhsvalue = obj->getRhs()->accept(this);
 	//idea pass the value of rhs operator to the accept of the location operator
@@ -203,7 +203,7 @@ void Visitor::visit(class Assignment* obj){
 	}
 }
 
-bool Visitor::visit(class boolLiteral* obj){
+bool interVisitor::visit(class boolLiteral* obj){
 	if(obj->getType()=="comp"){
 		string opr = obj->getOpr();
 		int left = obj->getLhs()->accept(this);
@@ -264,14 +264,14 @@ bool Visitor::visit(class boolLiteral* obj){
 			return false;
 	}
 }
-string Visitor::visit(class stringLiteral* obj){
+string interVisitor::visit(class stringLiteral* obj){
 	return obj->getValue();
 }
-int Visitor::visit(class intLiteral* obj){
+int interVisitor::visit(class intLiteral* obj){
 	return obj->getValue();
 }
 //assignment
-int Visitor::visit(class Location* obj, int value){
+int interVisitor::visit(class Location* obj, int value){
 	if(obj->getType()=="Array"){
 		int index = obj->getExpr()->accept(this);
 		array_dec[obj->getVar()][index] = value;
@@ -282,7 +282,7 @@ int Visitor::visit(class Location* obj, int value){
 	return 0;
 }
 //fetch
-int Visitor::visit(class Location* obj){
+int interVisitor::visit(class Location* obj){
 	if(obj->getType()=="Array"){
 		int index = obj->getExpr()->accept(this);
 		return array_dec[obj->getVar()][index];
@@ -292,7 +292,7 @@ int Visitor::visit(class Location* obj){
 	}
 }
 
-bool Visitor::visit(class binBoolExpr* obj){
+bool interVisitor::visit(class binBoolExpr* obj){
 	bool left_val = obj->getLhs()->accept(this);
 	bool right_val = obj->getRhs()->accept(this);
 	string op = obj->getOpr();
@@ -315,14 +315,14 @@ bool Visitor::visit(class binBoolExpr* obj){
 	}
 }
 
-bool Visitor::visit(class unBoolExpr* obj){
+bool interVisitor::visit(class unBoolExpr* obj){
 	bool val = obj->getExpr()->accept(this);
 	string op = obj->getOpr();
 	if(op=="!")
 		return !val;
 }
 
-int Visitor::visit(class unArithExpr* obj){
+int interVisitor::visit(class unArithExpr* obj){
 	int val = obj->getExpr()->accept(this);
 	string op = obj->getOpr();
 	if(op=="-")

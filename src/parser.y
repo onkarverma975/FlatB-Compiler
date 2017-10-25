@@ -237,8 +237,13 @@ int main(int argc, char *argv[])
 	yyin = fopen(argv[1], "r");
 
 	yyparse();
+	
 	if(start){
-		Visitor * visitor = new Visitor();
+		Visitor * visitor = new interVisitor();
+		start->accept(visitor);
+	}
+	if(start){
+		Visitor * visitor = new semanVisitor();
 		start->accept(visitor);
 	}
 }
