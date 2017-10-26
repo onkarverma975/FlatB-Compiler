@@ -1438,7 +1438,7 @@ yyreduce:
 
   case 14:
 #line 109 "parser.y" /* yacc.c:1646  */
-    { (yyval.stmts)->push_back((yyvsp[0].stmt));}
+    { (yyval.stmts)->push_back((yyvsp[0].stmt), string((yyvsp[-2].value)));}
 #line 1443 "parser.tab.c" /* yacc.c:1646  */
     break;
 
@@ -2030,10 +2030,7 @@ int main(int argc, char *argv[])
 		Visitor * visitor = new interVisitor();
 		start->accept(visitor);
 	}
-	if(start){
-		Visitor * visitor = new semanVisitor();
-		start->accept(visitor);
-	}
+
 }
 
 

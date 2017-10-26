@@ -106,7 +106,7 @@ Var_dec_name:
 Statements: 
 	/*Empty*/ {$$ = new Stmts();}
 	| Statements Statement {$$->push_back($2);}
-	| Statements ID COL Statement { $$->push_back($4);} 
+	| Statements ID COL Statement { $$->push_back($4, string($2));} 
 	;
 
 Statement:
@@ -242,10 +242,7 @@ int main(int argc, char *argv[])
 		Visitor * visitor = new interVisitor();
 		start->accept(visitor);
 	}
-	if(start){
-		Visitor * visitor = new semanVisitor();
-		start->accept(visitor);
-	}
+
 }
 
 

@@ -1,6 +1,16 @@
 #include<bits/stdc++.h>
 #include "Classes.h"
 using namespace std;
+map <string,int> decl_integer;
+map <string,vector<int> > decl_array;
+string type;
+// int mode;
+//1 : declaration
+//2 : print
+//3 : read
+//4 : assign
+//5 : use
+int newLine;
 int semanVisitor::visit(class binArithExpr* obj){
 	return 0;
 }

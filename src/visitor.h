@@ -3,37 +3,46 @@
 using namespace std;
 
 class Visitor{
-	public:
-		virtual void visit(class Prog*) = 0;
-		virtual void visit(class Var*) = 0;
-		virtual void visit(class Vars*) = 0;
-		virtual void visit(class printCand*) = 0;
-		virtual void visit(class printCands*) = 0;
-		virtual void visit(class readCands*) = 0;
-		virtual void visit(class fieldDecl*) = 0;
-		virtual void visit(class fieldDecls*) = 0;
-		virtual int  visit(class unArithExpr*) = 0;
-		virtual int  visit(class binArithExpr*) = 0;
-		virtual bool visit(class unBoolExpr*) = 0;
-		virtual bool visit(class binBoolExpr*) = 0;
-		virtual int  visit(class Location*) = 0;
-		virtual int  visit(class Location*, int) = 0;
-		virtual int  visit(class intLiteral*) = 0;
-		virtual string visit(class stringLiteral*) = 0;
-		virtual bool visit(class boolLiteral*) = 0;
-		virtual void visit(class Stmts*) = 0;
-		virtual void visit(class Assignment*) = 0;
-		virtual void visit(class statementBlock*) = 0;
-		virtual void visit(class declarationBlock*) = 0;
-		virtual void visit(class forStmt*) = 0;
-		virtual void visit(class gotoStmt*) = 0;
-		virtual void visit(class ifElseStmt*) = 0;
-		virtual void visit(class whileStmt*) = 0;
-		virtual void visit(class printStmt*) = 0;
-		virtual void visit(class readStmt*) = 0;
+
+public:
+	virtual void visit(class Prog*) = 0;
+	virtual void visit(class Var*) = 0;
+	virtual void visit(class Vars*) = 0;
+	virtual void visit(class printCand*) = 0;
+	virtual void visit(class printCands*) = 0;
+	virtual void visit(class readCands*) = 0;
+	virtual void visit(class fieldDecl*) = 0;
+	virtual void visit(class fieldDecls*) = 0;
+	virtual int  visit(class unArithExpr*) = 0;
+	virtual int  visit(class binArithExpr*) = 0;
+	virtual bool visit(class unBoolExpr*) = 0;
+	virtual bool visit(class binBoolExpr*) = 0;
+	virtual int  visit(class Location*) = 0;
+	virtual int  visit(class Location*, int) = 0;
+	virtual int  visit(class intLiteral*) = 0;
+	virtual string visit(class stringLiteral*) = 0;
+	virtual bool visit(class boolLiteral*) = 0;
+	virtual void visit(class Stmts*) = 0;
+	virtual void visit(class Assignment*) = 0;
+	virtual void visit(class statementBlock*) = 0;
+	virtual void visit(class declarationBlock*) = 0;
+	virtual void visit(class forStmt*) = 0;
+	virtual void visit(class gotoStmt*) = 0;
+	virtual void visit(class ifElseStmt*) = 0;
+	virtual void visit(class whileStmt*) = 0;
+	virtual void visit(class printStmt*) = 0;
+	virtual void visit(class readStmt*) = 0;
 };
 
 class interVisitor:public Visitor{
+private:
+	int Flag_Goto;
+	string Goto_Label;
+	map <string,int> integer;
+	map <string,vector<int> > array_dec;
+	string type;
+	int newLine;
+
 public:
 	void visit(class Prog*);
 	void visit(class Var*);
@@ -62,6 +71,7 @@ public:
 	void visit(class whileStmt*);
 	void visit(class printStmt*);
 	void visit(class readStmt*);
+	interVisitor();
 };
 
 class semanVisitor:public Visitor{

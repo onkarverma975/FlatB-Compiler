@@ -151,7 +151,6 @@ public:
 class fieldDecls:public astNode{
 private:
 	vector<class fieldDecl*> decl_list;
-	int cnt;
 public:
 	fieldDecls();
 	void push_back(class fieldDecl*);
@@ -329,18 +328,23 @@ public:
 
 class Stmt:public astNode{
 protected:
+	string name;
 public:
 	virtual void accept(Visitor *) = 0;
+	string getName(){return name;}
 };
 
 class Stmts:public astNode{
 private:
 	vector<class Stmt*> stmts;
-	int cnt;
+	map<string,class Stmt*> ltable;
 public:
 	Stmts();
 	void push_back(class Stmt*);
+	void push_back(class Stmt*, string);
 	vector<class Stmt*> getStmts(){return stmts;}
+	map<string,class Stmt*> getLTable(){return ltable;}
+	bool checkLabel(string name);
     void accept(Visitor *v) {
 		v->visit(this);
     }
