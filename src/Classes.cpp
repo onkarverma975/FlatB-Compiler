@@ -292,10 +292,10 @@ Value* binArithExpr::codegen(){
 	Value* left = lhs->codegen();
 	Value* right = rhs->codegen();
 	if(lhs->getEtype() == exprType::location){
-		// left = Builder.CreateLoad(left);
+		left = Builder.CreateLoad(left);
 	}
 	if(rhs->getEtype() == exprType::location){
-		// right = Builder.CreateLoad(right);
+		right = Builder.CreateLoad(right);
 	}
 	if(left == 0){
 		errors++;
@@ -327,7 +327,7 @@ Value* binArithExpr::codegen(){
 Value* unArithExpr::codegen(){
 	Value* v = body->codegen();
 	if(body->getEtype() == exprType::location){
-		// v = Builder.CreateLoad(v);
+		v = Builder.CreateLoad(v);
 	}
 	if(opr == "-"){
 		return Builder.CreateNeg(v,"negtmp");
@@ -625,7 +625,50 @@ Value* whileStmt::codegen(){
 	return V;
 }
 
-Value* forStmt::codegen(){}
+Value* forStmt::codegen(){
+	// Value* cur = TheModule->getGlobalVariable(var->getVar());
+	// if(cur==0){
+	// 	errors++;
+	// 	return reportError::ErrorV("Invalid Expression in the IF");
+	// }
+	// Function * ThisFunction = Builder.GetInsertBlock()->getParent();
+	// BasicBlock *forBlock = BasicBlock::Create(Context,"for",ThisFunction);
+	// BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
+	
+	// Builder.CreateCondBr(cond, ifBlock, elseBlock);
+	
+	// //begin if block
+	// Builder.SetInsertPoint(ifBlock);
+	// Value* ifval = if_block->codegen();
+	// if(ifval == 0){
+	// 	return 0;
+	// }
+	// Builder.CreateBr(nextBlock);
+
+	// ifBlock = Builder.GetInsertBlock();
+	// ThisFunction->getBasicBlockList().push_back(elseBlock);
+
+	// //begin else block
+
+	// Builder.SetInsertPoint(elseBlock);
+	// Value* elseval;
+	// if(else_block != NULL)
+	// {
+	// 	elseval = else_block->codegen();
+	// 	if(elseval == 0){
+	// 		return 0;
+	// 	}
+	// }
+	// Builder.CreateBr(nextBlock);
+	// elseBlock = Builder.GetInsertBlock();
+	// ThisFunction->getBasicBlockList().push_back(nextBlock);
+
+	// // begin the next block  	
+
+	// Builder.SetInsertPoint(nextBlock);
+	// Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+	// return V;
+}
 Value* gotoStmt::codegen(){}
 Value* Assignment::codegen(){
 	Value* cur = TheModule->getGlobalVariable(loc->getVar());//lhs check
@@ -639,7 +682,7 @@ Value* Assignment::codegen(){
 
 	Value* val = expr->codegen(); // rhs load
 	if(expr->getEtype() == exprType::location){
-		// val = Builder.CreateLoad(val);
+		val = Builder.CreateLoad(val);
 	}
 
 	if(val == 0){
@@ -670,7 +713,7 @@ Value* Location::codegen(){
 	if(this->expr != NULL){
 		Value* index = expr->codegen();
 		if(expr->getEtype() == exprType::location){
-			// index = Builder.CreateLoad(index);
+			index = Builder.CreateLoad(index);
 		}
 		if(index == 0){
 			errors++;
@@ -683,3 +726,15 @@ Value* Location::codegen(){
 		return V;
 	}
 }
+
+// Function *createFunc(std::string Name){
+// 	Type *u32Ty = Type::getInt32Ty(Context);
+// 	Type *vecTy = VectorType::get(u32Ty, 2);
+// 	Type *ptrTy = vecTy->getPointerTo(0);
+// 	FunctionType *funcType = Function::get(Builder.getInt32Ty(), ptrTym false);
+// 	Function *fooFunc = Function::Create(funcType, Function::ExternalLinkage, Name, ModuleOb);
+// 	return fooFunc;
+// }
+// Value *getGEP (Value *Base, Value *Offset){
+// 	return Builder.CreateGEP(Builder.getInt32Ty(), Base, Offset, "a1");
+// }

@@ -1,6 +1,6 @@
 declblock{
-int i,j,k,x;
+int i,j,k,x, a[45];
 }
 codeblock{
-i=1;
+i=a[3];
 }
