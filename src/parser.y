@@ -238,10 +238,10 @@ int main(int argc, char *argv[])
 
 	yyparse();
 	
-	//if(start){
-	//	Visitor * visitor = new interVisitor();
-	//	start->accept(visitor);
-	//}
+	if(start){
+		Visitor * visitor = new interVisitor();
+		start->accept(visitor);
+	}
 	if(start){
 		start->codegen();	
 		cout << errors << endl;

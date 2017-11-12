@@ -388,6 +388,7 @@ protected:
 public:
 	virtual void accept(Visitor *) = 0;
 	string getName(){return name;}
+	string setName(string this_name){name = this_name;}
     virtual Value* codegen() = 0;
 };
 

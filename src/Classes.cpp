@@ -9,10 +9,9 @@ extern int errors;
 static Module *TheModule = new Module("FlatB Compiler",llvm::getGlobalContext());
 static LLVMContext &Context = getGlobalContext();
 static IRBuilder<> Builder(Context);
-static std::map<std::string, llvm::AllocaInst *> NamedValues;
 FunctionType *FT = llvm::FunctionType::get(Type::getInt32Ty(getGlobalContext()), false);
 Function *MainF = llvm::Function::Create(FT, Function::ExternalLinkage, "main", TheModule);
-
+map<string, BasicBlock *> GlobalLTable;
 Prog::Prog(class declarationBlock* decls, class statementBlock* statements){
 	this->decls = decls;
 	this->statements = statements;
@@ -128,10 +127,12 @@ Stmts::Stmts(){
 
 void Stmts::push_back(class Stmt* stmt){
 	stmts.push_back(stmt);
+	stmt->setName("None123456");
 }
 
 void Stmts::push_back(class Stmt* stmt, string label){
 	stmts.push_back(stmt);
+	stmt->setName(label);
 	if(this->ltable.find(label) == this->ltable.end()){
 		this->ltable[label] = stmt;
 	}
@@ -189,16 +190,15 @@ ifElseStmt::ifElseStmt(class BoolExpr* cond, class statementBlock* block1, class
 }
 
 
-whileStmt::	whileStmt(class BoolExpr* condition, class statementBlock* body){
+whileStmt::whileStmt(class BoolExpr* condition, class statementBlock* body){
 	this->name = "while";
 
 	this->condition = condition;
 	this->body = body;
 }
 
-gotoStmt:: gotoStmt(string location, class BoolExpr*condition){
+gotoStmt::gotoStmt(string location, class BoolExpr*condition){
 	this->name = "gotoStmt";
-
 	this->condition = condition;
 	this->location = location;
 }
@@ -387,7 +387,7 @@ Value* boolLiteral::codegen(){
 	if(type=="value"){
 		if(value == "true") val = true;
 		else if (value == "false") val = false;
-		v = ConstantInt::get(getGlobalContext(), llvm::APInt(1,0));
+		v = ConstantInt::get(getGlobalContext(), llvm::APInt(1,val));
 	}
 	else if(type=="comp"){
 		Value* left = lhs->codegen();
@@ -455,6 +455,19 @@ Value* declarationBlock::codegen(){
 Value* Stmts::codegen(){
 	Value* V = ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));
 	for(auto cs : stmts){
+		if(cs->getName()!="None123456"){
+			string label = cs->getName();
+			Function * ThisFunction = MainF;
+			BasicBlock *newBlock = BasicBlock::Create(Context,label,ThisFunction);
+			Builder.SetInsertPoint(newBlock);
+
+			if(GlobalLTable.find(label) == GlobalLTable.end()){
+				GlobalLTable[label] = newBlock;
+			}
+			else{
+				cout << "Error: redeclaration of label "<<label << endl;
+			}
+		}
 		V = cs->codegen();
 	}
 	return V;
@@ -559,7 +572,7 @@ Value* ifElseStmt::codegen(){
 		errors++;
 		return reportError::ErrorV("Invalid Expression in the IF");
 	}
-	Function * ThisFunction = Builder.GetInsertBlock()->getParent();
+	Function * ThisFunction = MainF;
 	BasicBlock *ifBlock = BasicBlock::Create(Context,"if",ThisFunction);
 	BasicBlock *elseBlock = BasicBlock::Create(Context,"else");
 	BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
@@ -573,7 +586,6 @@ Value* ifElseStmt::codegen(){
 	Builder.CreateBr(nextBlock);
 
 	ifBlock = Builder.GetInsertBlock();
-	ThisFunction->getBasicBlockList().push_back(elseBlock);
 
 	//begin else block
 
@@ -588,8 +600,6 @@ Value* ifElseStmt::codegen(){
 	}
 	Builder.CreateBr(nextBlock);
 	elseBlock = Builder.GetInsertBlock();
-	ThisFunction->getBasicBlockList().push_back(nextBlock);
-
 	// begin the next block  	
 
 	Builder.SetInsertPoint(nextBlock);
@@ -603,7 +613,7 @@ Value* whileStmt::codegen(){
 		errors++;
 		return reportError::ErrorV("Invalid Expression in the IF");
 	}
-	Function * ThisFunction = Builder.GetInsertBlock()->getParent();
+	Function * ThisFunction = MainF;
 	BasicBlock *whileBlock = BasicBlock::Create(Context,"while",ThisFunction);
 	BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
 	Builder.CreateCondBr(cond, whileBlock, nextBlock);
@@ -616,7 +626,6 @@ Value* whileStmt::codegen(){
 	Builder.CreateCondBr(cond, whileBlock, nextBlock);
 
 	whileBlock = Builder.GetInsertBlock();
-	ThisFunction->getBasicBlockList().push_back(nextBlock);
 
 	// begin the next block  	
 
@@ -626,42 +635,89 @@ Value* whileStmt::codegen(){
 }
 
 Value* forStmt::codegen(){
-	// Value* cur = TheModule->getGlobalVariable(var->getVar());
-	// if(cur==0){
+	Value* cur = TheModule->getGlobalVariable(var->getVar());
+	if(cur==0){
+		errors++;
+		return reportError::ErrorV("Invalid Expression in the IF");
+	}
+	Function * ThisFunction = MainF;
+	BasicBlock *forBlock = BasicBlock::Create(Context,"for",ThisFunction);
+	BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
+	
+	Value* lhs = var->codegen(); // lhs load
+
+	Value* val = min_range->codegen(); // rhs load
+	if(min_range->getEtype() == exprType::location){
+		val = Builder.CreateLoad(val);
+	}
+	Builder.CreateStore(val, lhs);
+
+	Value* final = max_range->codegen(); // final value
+	if(max_range->getEtype() == exprType::location){
+		final = Builder.CreateLoad(final);
+	}
+	Value* cond = Builder.CreateICmpEQ(lhs, final,"lecomparetmp");
+
+	Builder.CreateCondBr(cond, nextBlock, forBlock);
+	
+	//begin if block
+	Builder.SetInsertPoint(forBlock);
+	
+	Value* ifval = body->codegen();
+	if(ifval == 0){
+		return 0;
+	}
+
+	//begin else block
+
+	lhs = var->codegen(); // lhs load
+	cur = Builder.CreateLoad(lhs);
+	Value* step_value;
+	if(flag){
+		step_value = step->codegen(); // step load
+		if(step->getEtype() == exprType::location){
+			step_value = Builder.CreateLoad(step_value);
+		}
+	}
+	else{
+		step_value = ConstantInt::get(getGlobalContext(), APInt(32,step_int));
+	}
+
+	val = Builder.CreateAdd(cur, step_value,"addEqualToTmp");
+	Builder.CreateStore(val, lhs);
+
+	final = max_range->codegen(); // final value
+	if(max_range->getEtype() == exprType::location){
+		final = Builder.CreateLoad(final);
+	}
+	cond = Builder.CreateICmpEQ(val, final,"lecomparetmp");
+	Builder.CreateCondBr(cond, nextBlock, forBlock);
+
+	// begin the next block  	
+	Builder.SetInsertPoint(nextBlock);
+	Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+	return V;
+}
+Value* gotoStmt::codegen(){
+	// Value *cond;
+	// Function * ThisFunction = MainF;
+	// if(GlobalLTable.find(location) == GlobalLTable.end()){
 	// 	errors++;
-	// 	return reportError::ErrorV("Invalid Expression in the IF");
+	// 	return reportError::ErrorV("Goto not supported for blocks declared after this.");
 	// }
-	// Function * ThisFunction = Builder.GetInsertBlock()->getParent();
-	// BasicBlock *forBlock = BasicBlock::Create(Context,"for",ThisFunction);
+	// BasicBlock *Block = GlobalLTable[location];
 	// BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
+	// if(condition!=NULL)
+	// 	Builder.CreateBr(Block);
+	// else{
+	// 	cond = condition->codegen();
+	// 	Builder.CreateCondBr(cond, Block, nextBlock);
+	// }
 	
-	// Builder.CreateCondBr(cond, ifBlock, elseBlock);
-	
+
 	// //begin if block
-	// Builder.SetInsertPoint(ifBlock);
-	// Value* ifval = if_block->codegen();
-	// if(ifval == 0){
-	// 	return 0;
-	// }
+
 	// Builder.CreateBr(nextBlock);
-
-	// ifBlock = Builder.GetInsertBlock();
-	// ThisFunction->getBasicBlockList().push_back(elseBlock);
-
-	// //begin else block
-
-	// Builder.SetInsertPoint(elseBlock);
-	// Value* elseval;
-	// if(else_block != NULL)
-	// {
-	// 	elseval = else_block->codegen();
-	// 	if(elseval == 0){
-	// 		return 0;
-	// 	}
-	// }
-	// Builder.CreateBr(nextBlock);
-	// elseBlock = Builder.GetInsertBlock();
-	// ThisFunction->getBasicBlockList().push_back(nextBlock);
 
 	// // begin the next block  	
 
@@ -669,7 +725,6 @@ Value* forStmt::codegen(){
 	// Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
 	// return V;
 }
-Value* gotoStmt::codegen(){}
 Value* Assignment::codegen(){
 	Value* cur = TheModule->getGlobalVariable(loc->getVar());//lhs check
 	if(cur == 0){
@@ -726,15 +781,3 @@ Value* Location::codegen(){
 		return V;
 	}
 }
-
-// Function *createFunc(std::string Name){
-// 	Type *u32Ty = Type::getInt32Ty(Context);
-// 	Type *vecTy = VectorType::get(u32Ty, 2);
-// 	Type *ptrTy = vecTy->getPointerTo(0);
-// 	FunctionType *funcType = Function::get(Builder.getInt32Ty(), ptrTym false);
-// 	Function *fooFunc = Function::Create(funcType, Function::ExternalLinkage, Name, ModuleOb);
-// 	return fooFunc;
-// }
-// Value *getGEP (Value *Base, Value *Offset){
-// 	return Builder.CreateGEP(Builder.getInt32Ty(), Base, Offset, "a1");
-// }
