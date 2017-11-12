@@ -13,20 +13,6 @@ static std::map<std::string, llvm::AllocaInst *> NamedValues;
 FunctionType *FT = llvm::FunctionType::get(Type::getInt32Ty(getGlobalContext()), false);
 Function *MainF = llvm::Function::Create(FT, Function::ExternalLinkage, "main", TheModule);
 
-static AllocaInst *CreateEntryBlockAlloca(Function *TheFunction, const std::string &VarName, string type) {
-  /* Allocates memory for local variables  on the stack of the function */
-
-  /* Get the builder for current context */
-	IRBuilder<> TmpB(&TheFunction->getEntryBlock(), TheFunction->getEntryBlock().begin());
-	AllocaInst* Alloca;
-	if(type == "int"){
-		Alloca = TmpB.CreateAlloca(Type::getInt32Ty(getGlobalContext()), 0, VarName.c_str());
-	}
-	else if (type == "boolean"){
-		Alloca = TmpB.CreateAlloca(Type::getInt1Ty(getGlobalContext()), 0, VarName.c_str());
-	}
-	return Alloca;
-}
 Prog::Prog(class declarationBlock* decls, class statementBlock* statements){
 	this->decls = decls;
 	this->statements = statements;
@@ -306,10 +292,10 @@ Value* binArithExpr::codegen(){
 	Value* left = lhs->codegen();
 	Value* right = rhs->codegen();
 	if(lhs->getEtype() == exprType::location){
-		left = Builder.CreateLoad(left);
+		// left = Builder.CreateLoad(left);
 	}
 	if(rhs->getEtype() == exprType::location){
-		right = Builder.CreateLoad(right);
+		// right = Builder.CreateLoad(right);
 	}
 	if(left == 0){
 		errors++;
@@ -341,7 +327,7 @@ Value* binArithExpr::codegen(){
 Value* unArithExpr::codegen(){
 	Value* v = body->codegen();
 	if(body->getEtype() == exprType::location){
-		v = Builder.CreateLoad(v);
+		// v = Builder.CreateLoad(v);
 	}
 	if(opr == "-"){
 		return Builder.CreateNeg(v,"negtmp");
@@ -441,39 +427,12 @@ Value* stringLiteral::codegen(){
 	return Builder.CreateGlobalStringPtr(value);
 }
 
-Value* Location::codegen(){
-	Value* V = TheModule->getNamedGlobal(var);
-	if(V == 0){
-		errors++;
-		return reportError::ErrorV("Unknown Variable name " + var);
-	}
-	if(this->location_type == "Normal"){
-		return V;
-	}
-	if(this->expr != NULL){
-		Value* index = expr->codegen();
-		if(expr->getEtype() == exprType::location){
-			index = Builder.CreateLoad(index);
-		}
-		if(index == 0){
-			errors++;
-			return reportError::ErrorV("Invalid array index");
-		}
-		vector<Value*> array_index;
-		array_index.push_back(Builder.getInt32(0));
-		array_index.push_back(index);
-		V = Builder.CreateGEP(V, array_index, var+"_Index");
-		return V;
-	}
-}
-
 Value* Prog::codegen(){
 	Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
 	V = decls->codegen();
 	BasicBlock *mainStmtBlock = BasicBlock::Create(getGlobalContext(),"B1",MainF);
 	Builder.SetInsertPoint(mainStmtBlock);
 	V = statements->codegen();
-	MainF->getBasicBlockList().push_back(mainStmtBlock);
 	return V;
 }
 void Prog::generateCode(){
@@ -516,128 +475,211 @@ Value* printCands::codegen(){
 }
 
 Value* printCand::codegen(){
-	// Function *CalleeF = TheModule->getOrInsertFunction("printf",
-	// FunctionType::get(IntegerType::getInt32Ty(Context), PointerType::get(Type::getInt8Ty(Context), 0), true /* this is var arg func type*/) 
- //       );
-	if(type=="integer"){}
-		else if(type=="string"){}
-			else if(type=="location"){}
-		}
+	vector<llvm::Type *> argTypes;
+	vector<Value* > Args;
+	if(type=="integer"){
 
-	Value* readStmt::codegen(){
-		Value* V = read->codegen();
-		return V;
-	}
-
-	Value* readCands::codegen(){
-		Value* V = ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));
-		for(auto cs : vars_list){
-			V = cs->codegen();
-		}
-		return V;
-	}
-
-
-	Value* ifElseStmt::codegen(){
-		Value *cond = condition->codegen();
-		if(cond==0){
-			errors++;
-			return reportError::ErrorV("Invalid Expression in the IF");
-		}
-		Function * ThisFunction = Builder.GetInsertBlock()->getParent();
-		BasicBlock *ifBlock = BasicBlock::Create(Context,"if",ThisFunction);
-		BasicBlock *elseBlock = BasicBlock::Create(Context,"else");
-		BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
-		Builder.CreateCondBr(cond, ifBlock, elseBlock);
-	//begin if block
-		Builder.SetInsertPoint(ifBlock);
-		Value* ifval = if_block->codegen();
-		if(ifval == 0){
+		stringLiteral* temp_str = new stringLiteral("%d");
+		//strlit
+		Value* tmp = temp_str->codegen();
+		if(tmp == 0){
 			return 0;
 		}
-		Builder.CreateBr(nextBlock);
+		Args.push_back(tmp);
+		argTypes.push_back(tmp->getType());
+		//int_lit
+		tmp = int_lit->codegen();
+		if(tmp == 0){
+			return 0;
+		}
+		Args.push_back(tmp);
+		argTypes.push_back(tmp->getType());
+	}
+	else if(type=="string"){
+		stringLiteral* temp_str = new stringLiteral("%s");
+		//strlit
+		Value* tmp = temp_str->codegen();
+		if(tmp == 0){
+			return 0;
+		}
+		Args.push_back(tmp);
+		argTypes.push_back(tmp->getType());
+		//str
+		tmp = str->codegen();
+		if(tmp == 0){
+			return 0;
+		}
+		Args.push_back(tmp);
+		argTypes.push_back(tmp->getType());
+	}
+	else if(type=="location"){
 
-		ifBlock = Builder.GetInsertBlock();
-		ThisFunction->getBasicBlockList().push_back(elseBlock);
+		stringLiteral* temp_str = new stringLiteral("%d");
+		//strlit
+		Value* tmp = temp_str->codegen();
+		if(tmp == 0){
+			return 0;
+		}
+		Args.push_back(tmp);
+		argTypes.push_back(tmp->getType());
+		//location
+		tmp = loc->codegen();
+		if(tmp == 0){
+			return 0;
+		}
+		Args.push_back(tmp);
+		argTypes.push_back(tmp->getType());
+
+	}
+	llvm::ArrayRef<llvm::Type*>  argsRef(argTypes);
+	llvm::ArrayRef<llvm::Value*>  funcargs(Args);
+	llvm::FunctionType *FType = FunctionType::get(Type::getInt32Ty(Context), argsRef, false);
+	Constant* func = TheModule->getOrInsertFunction("printf", FType);
+	Value* v = Builder.CreateCall(func, funcargs);
+	return v;
+}
+
+Value* readStmt::codegen(){
+	Value* V = read->codegen();
+	return V;
+}
+
+Value* readCands::codegen(){
+	Value* V = ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));
+	for(auto cs : vars_list){
+		V = cs->codegen();
+	}
+	return V;
+}
+
+
+Value* ifElseStmt::codegen(){
+	Value *cond = condition->codegen();
+	if(cond==0){
+		errors++;
+		return reportError::ErrorV("Invalid Expression in the IF");
+	}
+	Function * ThisFunction = Builder.GetInsertBlock()->getParent();
+	BasicBlock *ifBlock = BasicBlock::Create(Context,"if",ThisFunction);
+	BasicBlock *elseBlock = BasicBlock::Create(Context,"else");
+	BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
+	Builder.CreateCondBr(cond, ifBlock, elseBlock);
+	//begin if block
+	Builder.SetInsertPoint(ifBlock);
+	Value* ifval = if_block->codegen();
+	if(ifval == 0){
+		return 0;
+	}
+	Builder.CreateBr(nextBlock);
+
+	ifBlock = Builder.GetInsertBlock();
+	ThisFunction->getBasicBlockList().push_back(elseBlock);
 
 	//begin else block
 
-		Builder.SetInsertPoint(elseBlock);
-		Value* elseval;
-		if(else_block != NULL)
-		{
-			elseval = else_block->codegen();
-			if(elseval == 0){
-				return 0;
-			}
-		}
-		Builder.CreateBr(nextBlock);
-		elseBlock = Builder.GetInsertBlock();
-		ThisFunction->getBasicBlockList().push_back(nextBlock);
-
-	// begin the next block  	
-
-		Builder.SetInsertPoint(nextBlock);
-		Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
-		return V;
-	}
-
-	Value* whileStmt::codegen(){
-		Value *cond = condition->codegen();
-		if(cond==0){
-			errors++;
-			return reportError::ErrorV("Invalid Expression in the IF");
-		}
-		Function * ThisFunction = Builder.GetInsertBlock()->getParent();
-		BasicBlock *whileBlock = BasicBlock::Create(Context,"while",ThisFunction);
-		BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
-		Builder.CreateCondBr(cond, whileBlock, nextBlock);
-	//begin while block
-		Builder.SetInsertPoint(whileBlock);
-		Value* block = body->codegen();
-		if(block == 0){
+	Builder.SetInsertPoint(elseBlock);
+	Value* elseval;
+	if(else_block != NULL)
+	{
+		elseval = else_block->codegen();
+		if(elseval == 0){
 			return 0;
 		}
-		Builder.CreateBr(nextBlock);
-
-		whileBlock = Builder.GetInsertBlock();
-		ThisFunction->getBasicBlockList().push_back(nextBlock);
+	}
+	Builder.CreateBr(nextBlock);
+	elseBlock = Builder.GetInsertBlock();
+	ThisFunction->getBasicBlockList().push_back(nextBlock);
 
 	// begin the next block  	
 
-		Builder.SetInsertPoint(nextBlock);
-		Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+	Builder.SetInsertPoint(nextBlock);
+	Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+	return V;
+}
+
+Value* whileStmt::codegen(){
+	Value *cond = condition->codegen();
+	if(cond==0){
+		errors++;
+		return reportError::ErrorV("Invalid Expression in the IF");
+	}
+	Function * ThisFunction = Builder.GetInsertBlock()->getParent();
+	BasicBlock *whileBlock = BasicBlock::Create(Context,"while",ThisFunction);
+	BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
+	Builder.CreateCondBr(cond, whileBlock, nextBlock);
+	//begin while block
+	Builder.SetInsertPoint(whileBlock);
+	Value* block = body->codegen();
+	if(block == 0){
+		return 0;
+	}
+	Builder.CreateCondBr(cond, whileBlock, nextBlock);
+
+	whileBlock = Builder.GetInsertBlock();
+	ThisFunction->getBasicBlockList().push_back(nextBlock);
+
+	// begin the next block  	
+
+	Builder.SetInsertPoint(nextBlock);
+	Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+	return V;
+}
+
+Value* forStmt::codegen(){}
+Value* gotoStmt::codegen(){}
+Value* Assignment::codegen(){
+	Value* cur = TheModule->getGlobalVariable(loc->getVar());//lhs check
+	if(cur == 0){
+		errors++;
+		return reportError::ErrorV("Unknown Variable Name");
+	}
+
+	Value* lhs = loc->codegen(); // lhs load
+	cur = Builder.CreateLoad(lhs);
+
+	Value* val = expr->codegen(); // rhs load
+	if(expr->getEtype() == exprType::location){
+		// val = Builder.CreateLoad(val);
+	}
+
+	if(val == 0){
+		errors++;
+		return reportError::ErrorV("Error in right hand side of the Assignment");
+	}
+
+	if(opr == "+="){
+		val = Builder.CreateAdd(cur, val,"addEqualToTmp");
+	}
+	else if (opr == "-="){
+		val = Builder.CreateSub(cur, val,"subEqualToTmp");
+	}
+	cur = Builder.CreateStore(val, lhs);
+	return cur;
+}
+
+
+Value* Location::codegen(){
+	Value* V = TheModule->getNamedGlobal(var);
+	if(V == 0){
+		errors++;
+		return reportError::ErrorV("Unknown Variable name " + var);
+	}
+	if(this->location_type == "Normal"){
 		return V;
 	}
-
-	Value* forStmt::codegen(){}
-	Value* gotoStmt::codegen(){}
-	Value* Assignment::codegen(){
-		Value* cur = TheModule->getGlobalVariable(loc->getVar());
-		if(cur == 0){
-			errors++;
-			return reportError::ErrorV("Unknown Variable Name");
-		}
-
-		Value* val = expr->codegen();
+	if(this->expr != NULL){
+		Value* index = expr->codegen();
 		if(expr->getEtype() == exprType::location){
-			val = Builder.CreateLoad(val);
+			// index = Builder.CreateLoad(index);
 		}
-
-		Value* lhs = loc->codegen();
-		cur = Builder.CreateLoad(lhs);
-
-		if(val == 0){
+		if(index == 0){
 			errors++;
-			return reportError::ErrorV("Error in right hand side of the Assignment");
+			return reportError::ErrorV("Invalid array index");
 		}
-
-		if(opr == "+="){
-			val = Builder.CreateAdd(cur, val,"addEqualToTmp");
-		}
-		else if (opr == "-="){
-			val = Builder.CreateSub(cur, val,"subEqualToTmp");
-		}
-		cur = Builder.CreateStore(val, lhs);
-		return cur;
+		vector<Value*> array_index;
+		array_index.push_back(Builder.getInt32(0));
+		array_index.push_back(index);
+		V = Builder.CreateGEP(V, array_index, var+"_Index");
+		return V;
 	}
+}
