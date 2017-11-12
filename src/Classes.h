@@ -1,6 +1,27 @@
 #include <bits/stdc++.h>
+
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/IR/PassManager.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/CallingConv.h>
+#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/IR/Verifier.h>
+//#include <llvm/Assembly/PrintModulePass.h>
+#include <llvm/IR/IRBuilder.h>
+//#include <llvm/ModuleProvider.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/ExecutionEngine/MCJIT.h>
+#include <llvm/Support/raw_ostream.h>
 #include "visitor.h"
 using namespace std;
+using namespace llvm;
+enum exprType { binary = 1, location = 2, literal = 3 , Unexpr = 4};
 
 union Node{
 	int number;
@@ -36,6 +57,15 @@ typedef union Node YYSTYPE;
 
 #define YYSTYPE_IS_DECLARED 1
 
+class reportError{
+	/* Class for error handling */
+    public:
+        static llvm::Value* ErrorV(string str) {
+            cout<<str<<endl;
+            return 0;
+        }
+};
+
 class astNode{
 public:
 };
@@ -52,6 +82,8 @@ public:
     void accept(Visitor * v) {
 		v->visit(this);
     }
+    Value* codegen();
+    void generateCode();
 };
 
 
@@ -75,6 +107,7 @@ public:
 	void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 class Vars:public astNode{
@@ -87,6 +120,7 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 
@@ -107,6 +141,7 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 class printCands:public astNode{
@@ -118,6 +153,7 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 
@@ -131,6 +167,7 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 
@@ -146,6 +183,7 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 class fieldDecls:public astNode{
@@ -158,14 +196,19 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 
 class ArithExpr:public astNode{
 protected:
+	exprType etype;
 public:
 	virtual int accept(Visitor *) = 0;
 	virtual int accept(Visitor *, int) = 0;
+    virtual Value* codegen() = 0;
+    exprType getEtype(){return etype;}
+    void setEtype(exprType x){etype = x;}
 };
 
 
@@ -183,6 +226,7 @@ public:
     int accept(Visitor *v, int value) {
 		return v->visit(this);
     }
+    Value* codegen();
 };
 
 class binArithExpr:public ArithExpr{
@@ -201,12 +245,15 @@ public:
     int accept(Visitor *v, int value) {
 		return v->visit(this);
     }
+    Value* codegen();
+
 };
 
 class BoolExpr:public astNode{
 protected:
 public:
 	virtual bool accept(Visitor *) = 0;
+    virtual Value* codegen() = 0;
 };
 
 
@@ -221,6 +268,7 @@ public:
 	bool accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 class binBoolExpr:public BoolExpr{
@@ -236,6 +284,7 @@ public:
     class BoolExpr* getLhs(){return lhs;}
     class BoolExpr* getRhs(){return rhs;}
     string getOpr(){return opr;} 
+    Value* codegen();
 };
 
 class Location:public ArithExpr{
@@ -258,16 +307,19 @@ public:
     int accept(Visitor *v, int value) {
 		return v->visit(this, value);
     }
+    Value* codegen();
 };
 
 class aLiteral:public ArithExpr{
 protected:
 public:
+    virtual Value* codegen() = 0;
 };
 
 class bLiteral:public BoolExpr{
 protected:
 public:
+    virtual Value* codegen() = 0;
 };
 
 class intLiteral:public aLiteral{
@@ -285,6 +337,7 @@ public:
 
 		return v->visit(this);
     }
+    Value* codegen();
 };
 
 class stringLiteral:public astNode{
@@ -296,6 +349,7 @@ public:
     string accept(Visitor *v) {
 		return v->visit(this);
     }
+    Value* codegen();
 };
 
 
@@ -304,6 +358,7 @@ private:
 	char value;
 public:
 	charLiteral(string);
+    Value* codegen();
 };
 
 class boolLiteral:public bLiteral{
@@ -324,6 +379,7 @@ public:
     bool accept(Visitor *v) {
 		return v->visit(this);
     }
+    Value* codegen();
 };
 
 class Stmt:public astNode{
@@ -332,6 +388,7 @@ protected:
 public:
 	virtual void accept(Visitor *) = 0;
 	string getName(){return name;}
+    virtual Value* codegen() = 0;
 };
 
 class Stmts:public astNode{
@@ -348,6 +405,7 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 class Assignment:public Stmt{
@@ -363,6 +421,7 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 class statementBlock:public astNode{
@@ -374,6 +433,7 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 class declarationBlock:public astNode{
@@ -385,6 +445,7 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 class forStmt:public Stmt{
@@ -409,6 +470,7 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 class ifElseStmt:public Stmt{
@@ -424,6 +486,7 @@ public:
 	void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 class whileStmt:public Stmt{
@@ -437,6 +500,7 @@ public:
 	void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };
 
 class gotoStmt:public Stmt{
@@ -450,6 +514,8 @@ public:
     void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
+
 };
 
 class printStmt:public Stmt{
@@ -463,6 +529,8 @@ public:
 	void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
+
 };
 
 class readStmt:public Stmt{
@@ -474,4 +542,5 @@ public:
 	void accept(Visitor *v) {
 		v->visit(this);
     }
+    Value* codegen();
 };

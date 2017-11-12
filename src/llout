@@ -1,0 +1,13 @@
+; ModuleID = 'FlatB Compiler'
+
+@i = external global i32*
+@j = external global i32*
+@k = external global i32*
+@x = external global i32*
+
+define i32 @main() {
+B14:
+  %0 = load i32*, i32** @x
+  store i31 0, i32** @x
+  br i1 or (i1 icmp ugt (i32** @i, i32** @j), i1 icmp ult (i32** @i, i32** @j)), label %if, label %else
+}

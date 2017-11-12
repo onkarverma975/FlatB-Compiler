@@ -3,7 +3,30 @@
 #include "Classes.h"
 
 using namespace std;
+using namespace llvm;
+extern int errors;
 
+static Module *TheModule = new Module("FlatB Compiler",llvm::getGlobalContext());
+static LLVMContext &Context = getGlobalContext();
+static IRBuilder<> Builder(Context);
+static std::map<std::string, llvm::AllocaInst *> NamedValues;
+FunctionType *FT = llvm::FunctionType::get(Type::getInt32Ty(getGlobalContext()), false);
+Function *MainF = llvm::Function::Create(FT, Function::ExternalLinkage, "main", TheModule);
+
+static AllocaInst *CreateEntryBlockAlloca(Function *TheFunction, const std::string &VarName, string type) {
+  /* Allocates memory for local variables  on the stack of the function */
+
+  /* Get the builder for current context */
+	IRBuilder<> TmpB(&TheFunction->getEntryBlock(), TheFunction->getEntryBlock().begin());
+	AllocaInst* Alloca;
+	if(type == "int"){
+		Alloca = TmpB.CreateAlloca(Type::getInt32Ty(getGlobalContext()), 0, VarName.c_str());
+	}
+	else if (type == "boolean"){
+		Alloca = TmpB.CreateAlloca(Type::getInt1Ty(getGlobalContext()), 0, VarName.c_str());
+	}
+	return Alloca;
+}
 Prog::Prog(class declarationBlock* decls, class statementBlock* statements){
 	this->decls = decls;
 	this->statements = statements;
@@ -66,12 +89,14 @@ fieldDecl::fieldDecl(string dataType, class Vars* vars){
 unArithExpr::unArithExpr(string opr, class ArithExpr* expr){
 	this->opr = opr;
 	this->body = expr;
+	this->etype = exprType::Unexpr;
 }
 
 binArithExpr::binArithExpr(class ArithExpr* lhs, string opr, class ArithExpr* rhs){
 	this->lhs = lhs;
 	this->rhs = rhs;
 	this->opr = opr;
+	this->etype = exprType::binary;
 }
 
 
@@ -101,12 +126,6 @@ boolLiteral::boolLiteral(string value){
 	this->type = "value";
 }
 
-charLiteral::charLiteral(string val){
-	this->value = val[0];
-}
-
-
-
 statementBlock::statementBlock(class Stmts* stmts){
 	this->stmts_list = stmts;
 }
@@ -135,13 +154,13 @@ void Stmts::push_back(class Stmt* stmt, string label){
 	}
 }
 bool Stmts::checkLabel(string name){
-		if(ltable.find(name)==this->ltable.end()){
-			return false;
-		}
-		else{
-			return true;
-		}
+	if(ltable.find(name)==this->ltable.end()){
+		return false;
 	}
+	else{
+		return true;
+	}
+}
 
 
 Assignment::Assignment(class Location* loc, string oper, class ArithExpr* expr){
@@ -235,11 +254,13 @@ Location::Location(string var, string location_type, class ArithExpr* expr){
 	this->var = var;
 	this->location_type = location_type;
 	this->expr = expr;
+	this->etype = exprType::location;
 }
 
 Location::Location(string var, string location_type){
 	this->var = var;
 	this->location_type = location_type;
+	this->etype = exprType::location;
 }
 boolLiteral::boolLiteral(class ArithExpr* lhs, string op , class ArithExpr* rhs){
 	this->lhs = lhs;
@@ -247,3 +268,376 @@ boolLiteral::boolLiteral(class ArithExpr* lhs, string op , class ArithExpr* rhs)
 	this->rhs = rhs;
 	this->type = "comp";
 }
+// ********************codegen****************
+
+Value* fieldDecl::codegen(){
+	for(int i = 0; i < var_list.size(); i++){
+    /* Allocate one location of global variable for all */
+		class Var* var = var_list[i];
+		llvm::Type *ty;
+		if(dataType == "int"){
+			ty = Type::getInt32Ty(Context);
+		}
+		if(var->isArray()){
+			ArrayType* arrType = ArrayType::get(ty,var->getLength());
+			PointerType* PointerTy_1 = PointerType::get(ArrayType::get(ty,var->getLength()),0);
+			GlobalVariable* gv = new GlobalVariable(*TheModule,arrType,false,GlobalValue::ExternalLinkage,0,var->getName());
+			gv->setInitializer(ConstantAggregateZero::get(arrType));
+		}
+		else{
+			PointerType* ptrTy = PointerType::get(ty,0);
+			GlobalVariable* gv = new GlobalVariable(*TheModule,ptrTy , false,GlobalValue::ExternalLinkage, 0, var->getName());
+		}
+	}
+	Value* v = ConstantInt::get(getGlobalContext(), APInt(32,1));
+	return v;
+}
+
+Value* fieldDecls::codegen(){
+	for(auto cs : decl_list){
+		cs->codegen();
+	}
+	Value* v = ConstantInt::get(getGlobalContext(), APInt(32,1));
+	return v;
+}
+
+
+Value* binArithExpr::codegen(){
+	Value* left = lhs->codegen();
+	Value* right = rhs->codegen();
+	if(lhs->getEtype() == exprType::location){
+		left = Builder.CreateLoad(left);
+	}
+	if(rhs->getEtype() == exprType::location){
+		right = Builder.CreateLoad(right);
+	}
+	if(left == 0){
+		errors++;
+		return reportError::ErrorV("Error in left operand of " + opr);
+	}
+	else if(right == 0){
+		errors++;
+		return reportError::ErrorV("Error in right operand of " + opr);
+	}
+	Value* v;
+	if(opr == "+"){
+		v = Builder.CreateAdd(left,right,"addtmp");
+	}
+	else if (opr == "-"){
+		v = Builder.CreateSub(left,right,"subtmp");
+	}
+	else if (opr == "*"){
+		v = Builder.CreateMul(left,right,"multmp");
+	}
+	else if (opr == "/"){
+		v = Builder.CreateUDiv(left,right,"divtmp");
+	}
+	else if(opr == "%"){
+		v = Builder.CreateURem(left,right,"modtmp");
+	}
+	return v;
+}
+
+Value* unArithExpr::codegen(){
+	Value* v = body->codegen();
+	if(body->getEtype() == exprType::location){
+		v = Builder.CreateLoad(v);
+	}
+	if(opr == "-"){
+		return Builder.CreateNeg(v,"negtmp");
+	}
+	else if (opr == "!"){
+		return Builder.CreateNot(v,"nottmp");
+	}
+}
+
+
+Value* binBoolExpr::codegen(){
+	Value* left = lhs->codegen();
+	Value* right = rhs->codegen();
+	if(left == 0){
+		errors++;
+		return reportError::ErrorV("Error in left operand of " + opr);
+	}
+	else if(right == 0){
+		errors++;
+		return reportError::ErrorV("Error in right operand of " + opr);
+	}
+	Value* v;
+	if (opr == "||"){
+		v = Builder.CreateOr(left,right,"ltcomparetmp");
+	}
+	else if (opr == "&&"){
+		v = Builder.CreateAnd(left,right,"gtcomparetmp");
+	}
+	else if (opr == "=="){
+		v = Builder.CreateICmpEQ(left,right,"lecomparetmp");
+	}
+	else if (opr == "!="){
+		v = Builder.CreateICmpNE(left,right,"gecomparetmp");
+	}
+
+	return v;
+}
+
+Value* unBoolExpr::codegen(){
+	Value* v = body->codegen();
+	if(opr == "-"){
+		return Builder.CreateNeg(v,"negtmp");
+	}
+	else if (opr == "!"){
+		return Builder.CreateNot(v,"nottmp");
+	}
+}
+
+Value* intLiteral::codegen(){
+	Value* v = ConstantInt::get(getGlobalContext(), llvm::APInt(32,value));
+	return v;
+}
+
+Value* boolLiteral::codegen(){
+	bool val;
+	Value* v = ConstantInt::get(getGlobalContext(), llvm::APInt(1,false));
+	if(type=="value"){
+		if(value == "true") val = true;
+		else if (value == "false") val = false;
+		v = ConstantInt::get(getGlobalContext(), llvm::APInt(1,0));
+	}
+	else if(type=="comp"){
+		Value* left = lhs->codegen();
+		Value* right = rhs->codegen();
+		string opr = op;
+		if(left == 0){
+			errors++;
+			return reportError::ErrorV("Error in left operand of " + opr);
+		}
+		else if(right == 0){
+			errors++;
+			return reportError::ErrorV("Error in right operand of " + opr);
+		}
+		if (opr == "<"){
+			v = Builder.CreateICmpULT(left,right,"ltcomparetmp");
+		}
+		else if (opr == ">"){
+			v = Builder.CreateICmpUGT(left,right,"gtcomparetmp");
+		}
+		else if (opr == "<="){
+			v = Builder.CreateICmpULE(left,right,"lecomparetmp");
+		}
+		else if (opr == ">="){
+			v = Builder.CreateICmpUGE(left,right,"gecomparetmp");
+		}
+		else if (opr == "=="){
+			v = Builder.CreateICmpEQ(left,right,"equalcomparetmp");
+		}
+		else if (opr == "!="){
+			v = Builder.CreateICmpNE(left,right,"notequalcomparetmp");
+		}
+	}
+	return v;
+}
+
+Value* stringLiteral::codegen(){
+	return Builder.CreateGlobalStringPtr(value);
+}
+
+Value* Location::codegen(){
+	Value* V = TheModule->getNamedGlobal(var);
+	if(V == 0){
+		errors++;
+		return reportError::ErrorV("Unknown Variable name " + var);
+	}
+	if(this->location_type == "Normal"){
+		return V;
+	}
+	if(this->expr != NULL){
+		Value* index = expr->codegen();
+		if(expr->getEtype() == exprType::location){
+			index = Builder.CreateLoad(index);
+		}
+		if(index == 0){
+			errors++;
+			return reportError::ErrorV("Invalid array index");
+		}
+		vector<Value*> array_index;
+		array_index.push_back(Builder.getInt32(0));
+		array_index.push_back(index);
+		V = Builder.CreateGEP(V, array_index, var+"_Index");
+		return V;
+	}
+}
+
+Value* Prog::codegen(){
+	Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+	V = decls->codegen();
+	BasicBlock *mainStmtBlock = BasicBlock::Create(getGlobalContext(),"B1",MainF);
+	Builder.SetInsertPoint(mainStmtBlock);
+	V = statements->codegen();
+	MainF->getBasicBlockList().push_back(mainStmtBlock);
+	return V;
+}
+void Prog::generateCode(){
+	cout << "Generating LLVM IR Code\n";
+	TheModule->dump();
+}
+
+Value* statementBlock::codegen(){
+	Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+	V = stmts_list->codegen();
+	return V;
+}
+
+Value* declarationBlock::codegen(){
+	Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+	V = decl_list->codegen();
+	return V;
+}
+
+Value* Stmts::codegen(){
+	Value* V = ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));
+	for(auto cs : stmts){
+		V = cs->codegen();
+	}
+	return V;
+}
+
+
+Value* printStmt::codegen(){
+	Value* V = print_candidates->codegen();
+	return V;
+}
+
+Value* printCands::codegen(){
+	Value* V = ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));
+	for(auto cs : printcans){
+		V = cs->codegen();
+	}
+	return V;
+}
+
+Value* printCand::codegen(){
+	// Function *CalleeF = TheModule->getOrInsertFunction("printf",
+	// FunctionType::get(IntegerType::getInt32Ty(Context), PointerType::get(Type::getInt8Ty(Context), 0), true /* this is var arg func type*/) 
+ //       );
+	if(type=="integer"){}
+		else if(type=="string"){}
+			else if(type=="location"){}
+		}
+
+	Value* readStmt::codegen(){
+		Value* V = read->codegen();
+		return V;
+	}
+
+	Value* readCands::codegen(){
+		Value* V = ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));
+		for(auto cs : vars_list){
+			V = cs->codegen();
+		}
+		return V;
+	}
+
+
+	Value* ifElseStmt::codegen(){
+		Value *cond = condition->codegen();
+		if(cond==0){
+			errors++;
+			return reportError::ErrorV("Invalid Expression in the IF");
+		}
+		Function * ThisFunction = Builder.GetInsertBlock()->getParent();
+		BasicBlock *ifBlock = BasicBlock::Create(Context,"if",ThisFunction);
+		BasicBlock *elseBlock = BasicBlock::Create(Context,"else");
+		BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
+		Builder.CreateCondBr(cond, ifBlock, elseBlock);
+	//begin if block
+		Builder.SetInsertPoint(ifBlock);
+		Value* ifval = if_block->codegen();
+		if(ifval == 0){
+			return 0;
+		}
+		Builder.CreateBr(nextBlock);
+
+		ifBlock = Builder.GetInsertBlock();
+		ThisFunction->getBasicBlockList().push_back(elseBlock);
+
+	//begin else block
+
+		Builder.SetInsertPoint(elseBlock);
+		Value* elseval;
+		if(else_block != NULL)
+		{
+			elseval = else_block->codegen();
+			if(elseval == 0){
+				return 0;
+			}
+		}
+		Builder.CreateBr(nextBlock);
+		elseBlock = Builder.GetInsertBlock();
+		ThisFunction->getBasicBlockList().push_back(nextBlock);
+
+	// begin the next block  	
+
+		Builder.SetInsertPoint(nextBlock);
+		Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+		return V;
+	}
+
+	Value* whileStmt::codegen(){
+		Value *cond = condition->codegen();
+		if(cond==0){
+			errors++;
+			return reportError::ErrorV("Invalid Expression in the IF");
+		}
+		Function * ThisFunction = Builder.GetInsertBlock()->getParent();
+		BasicBlock *whileBlock = BasicBlock::Create(Context,"while",ThisFunction);
+		BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
+		Builder.CreateCondBr(cond, whileBlock, nextBlock);
+	//begin while block
+		Builder.SetInsertPoint(whileBlock);
+		Value* block = body->codegen();
+		if(block == 0){
+			return 0;
+		}
+		Builder.CreateBr(nextBlock);
+
+		whileBlock = Builder.GetInsertBlock();
+		ThisFunction->getBasicBlockList().push_back(nextBlock);
+
+	// begin the next block  	
+
+		Builder.SetInsertPoint(nextBlock);
+		Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+		return V;
+	}
+
+	Value* forStmt::codegen(){}
+	Value* gotoStmt::codegen(){}
+	Value* Assignment::codegen(){
+		Value* cur = TheModule->getGlobalVariable(loc->getVar());
+		if(cur == 0){
+			errors++;
+			return reportError::ErrorV("Unknown Variable Name");
+		}
+
+		Value* val = expr->codegen();
+		if(expr->getEtype() == exprType::location){
+			val = Builder.CreateLoad(val);
+		}
+
+		Value* lhs = loc->codegen();
+		cur = Builder.CreateLoad(lhs);
+
+		if(val == 0){
+			errors++;
+			return reportError::ErrorV("Error in right hand side of the Assignment");
+		}
+
+		if(opr == "+="){
+			val = Builder.CreateAdd(cur, val,"addEqualToTmp");
+		}
+		else if (opr == "-="){
+			val = Builder.CreateSub(cur, val,"subEqualToTmp");
+		}
+		cur = Builder.CreateStore(val, lhs);
+		return cur;
+	}

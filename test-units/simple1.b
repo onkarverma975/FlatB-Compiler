@@ -12,4 +12,8 @@ codeblock{
 
 		goto L if i <= 5;
 		println "Over";
+		for i sdgs{
+			B:jbkb0;
+			goto B;
+		}
 }

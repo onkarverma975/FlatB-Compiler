@@ -1,15 +1,14 @@
 declblock{
-	int data[100];
-	int i, sum;
+int i,j,k,x;
 }
-
 codeblock{
-	for i = 8, 100 {
-		data[i] = i ;
-	}
-	print "asdfasdfsadfsdsdf";
-	c=a+b;
-
-	sum = 0;
+x=0;
+if(i>j || i<j){
+	k=i;
 }
-
+k=i;
+if(i>j || i<j){
+	k=i;
+}
+k=i;
+}
