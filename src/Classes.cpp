@@ -9,7 +9,7 @@ extern int errors;
 static Module *TheModule = new Module("FlatB Compiler",llvm::getGlobalContext());
 static LLVMContext &Context = getGlobalContext();
 static IRBuilder<> Builder(Context);
-FunctionType *FT = llvm::FunctionType::get(Type::getInt32Ty(getGlobalContext()), false);
+FunctionType *FT = llvm::FunctionType::get(Type::getVoidTy(getGlobalContext()), false);
 Function *MainF = llvm::Function::Create(FT, Function::ExternalLinkage, "main", TheModule);
 map<string, BasicBlock *> GlobalLTable;
 Prog::Prog(class declarationBlock* decls, class statementBlock* statements){
@@ -459,6 +459,7 @@ Value* Stmts::codegen(){
 			string label = cs->getName();
 			Function * ThisFunction = MainF;
 			BasicBlock *newBlock = BasicBlock::Create(Context,label,ThisFunction);
+			Builder.CreateBr(newBlock);
 			Builder.SetInsertPoint(newBlock);
 
 			if(GlobalLTable.find(label) == GlobalLTable.end()){
