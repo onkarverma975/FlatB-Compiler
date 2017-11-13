@@ -561,6 +561,7 @@ Value* readStmt::codegen(){
 
 
 Value* readCands::codegen(){
+
 	for (auto cs : vars_list){
 		Value* V = ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));
 		llvm::Type* ScanfArgs[] = { Type::getInt8PtrTy(Context) };
@@ -571,20 +572,15 @@ Value* readCands::codegen(){
 		//strlit
 		Value* tmp = temp_str->codegen();
 		Args.push_back(tmp);
-		Value *IntPtr = Builder.CreateAlloca(Type::getInt32Ty(Context));
+		Value* lhs_addr = cs->codegen();
 		// location
-		Args.push_back(IntPtr);
+		Args.push_back(lhs_addr);
 
 		llvm::ArrayRef<llvm::Value*>  funcargs(Args);
 		
 		Value* v = Builder.CreateCall(func, funcargs);
-		
-		Value* lhs_addr = cs->codegen();
-		Value* val = Builder.CreateLoad(IntPtr);
-		Builder.CreateStore(val, lhs_addr);
-		return v;
 	}
-	return ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));;
+	return ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));
 }
 
 

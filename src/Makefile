@@ -15,4 +15,8 @@ lex.yy.c: scanner.l parser.tab.h
 
 .PHONY: clean 
 clean:
-	-@rm -rf parser.tab.c parser.tab.h lex.yy.c bcc 2>/dev/null || true
+	-@rm -rf parser.tab.c parser.tab.h lex.yy.c llout llout.s static bcc 2>/dev/null || true
+
+.PHONY: clear
+clear:
+	-@rm -rf llout llout.s static 2>/dev/null || true
