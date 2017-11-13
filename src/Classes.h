@@ -385,10 +385,13 @@ public:
 class Stmt:public astNode{
 protected:
 	string name;
+	string label;
 public:
 	virtual void accept(Visitor *) = 0;
 	string getName(){return name;}
+	string getLabel(){return label;}
 	string setName(string this_name){name = this_name;}
+	string setLabel(string this_name){label = this_name;}
     virtual Value* codegen() = 0;
 };
 

@@ -16,6 +16,7 @@ Prog::Prog(class declarationBlock* decls, class statementBlock* statements){
 	this->decls = decls;
 	this->statements = statements;
 }
+int print_new_line;
 
 
 vector<class Var*> Vars::getVarsList(){
@@ -127,12 +128,11 @@ Stmts::Stmts(){
 
 void Stmts::push_back(class Stmt* stmt){
 	stmts.push_back(stmt);
-	stmt->setName("None123456");
 }
 
 void Stmts::push_back(class Stmt* stmt, string label){
 	stmts.push_back(stmt);
-	stmt->setName(label);
+	stmt->setLabel(label);
 	if(this->ltable.find(label) == this->ltable.end()){
 		this->ltable[label] = stmt;
 	}
@@ -151,6 +151,7 @@ bool Stmts::checkLabel(string name){
 
 
 Assignment::Assignment(class Location* loc, string oper, class ArithExpr* expr){
+	this->label = "None123456";
 	this->loc = loc;
 	this->opr = oper;
 	this->expr = expr;
@@ -161,6 +162,7 @@ Assignment::Assignment(class Location* loc, string oper, class ArithExpr* expr){
 forStmt::forStmt(class Location* var, class ArithExpr* min_range, class ArithExpr* max_range, class ArithExpr* step , class statementBlock* body)
 {
 	this->name = "for";
+	this->label = "None123456";
 	this->var = var;
 	this->min_range = min_range;
 	this->max_range = max_range;
@@ -172,6 +174,7 @@ forStmt::forStmt(class Location* var, class ArithExpr* min_range, class ArithExp
 forStmt::forStmt(class Location* var, class ArithExpr* min_range, class ArithExpr*max_range, int step_int, class statementBlock* body)
 {
 	this->name = "for";
+	this->label = "None123456";
 
 	this->var = var;
 	this->min_range = min_range;
@@ -183,6 +186,7 @@ forStmt::forStmt(class Location* var, class ArithExpr* min_range, class ArithExp
 
 ifElseStmt::ifElseStmt(class BoolExpr* cond, class statementBlock* block1, class statementBlock* block2){
 	this->name = "if";
+	this->label = "None123456";
 
 	this->condition = cond;
 	this->if_block = block1;
@@ -192,18 +196,21 @@ ifElseStmt::ifElseStmt(class BoolExpr* cond, class statementBlock* block1, class
 
 whileStmt::whileStmt(class BoolExpr* condition, class statementBlock* body){
 	this->name = "while";
+	this->label = "None123456";
 
 	this->condition = condition;
 	this->body = body;
 }
 
 gotoStmt::gotoStmt(string location, class BoolExpr*condition){
+	this->label = "None123456";
 	this->name = "gotoStmt";
 	this->condition = condition;
 	this->location = location;
 }
 
 readStmt::readStmt(class readCands* cands){
+	this->label = "None123456";
 	this->name = "read";
 
 	this->read = cands;
@@ -213,9 +220,11 @@ void readCands::push_back(class Location* loc){
 	this->vars_list.push_back(loc);
 }
 printStmt::printStmt(int new_line, class printCands* candidates){
+	this->label = "None123456";
 	this->name = "print";
 
 	this->new_line = new_line;
+	print_new_line = new_line;
 	this->print_candidates = candidates;
 }
 void printCands::push_back(class printCand* cand){
@@ -256,28 +265,6 @@ boolLiteral::boolLiteral(class ArithExpr* lhs, string op , class ArithExpr* rhs)
 }
 // ********************codegen****************
 
-Value* fieldDecl::codegen(){
-	for(int i = 0; i < var_list.size(); i++){
-    /* Allocate one location of global variable for all */
-		class Var* var = var_list[i];
-		llvm::Type *ty;
-		if(dataType == "int"){
-			ty = Type::getInt32Ty(Context);
-		}
-		if(var->isArray()){
-			ArrayType* arrType = ArrayType::get(ty,var->getLength());
-			PointerType* PointerTy_1 = PointerType::get(ArrayType::get(ty,var->getLength()),0);
-			GlobalVariable* gv = new GlobalVariable(*TheModule,arrType,false,GlobalValue::ExternalLinkage,0,var->getName());
-			gv->setInitializer(ConstantAggregateZero::get(arrType));
-		}
-		else{
-			PointerType* ptrTy = PointerType::get(ty,0);
-			GlobalVariable* gv = new GlobalVariable(*TheModule,ptrTy , false,GlobalValue::ExternalLinkage, 0, var->getName());
-		}
-	}
-	Value* v = ConstantInt::get(getGlobalContext(), APInt(32,1));
-	return v;
-}
 
 Value* fieldDecls::codegen(){
 	for(auto cs : decl_list){
@@ -341,14 +328,6 @@ Value* unArithExpr::codegen(){
 Value* binBoolExpr::codegen(){
 	Value* left = lhs->codegen();
 	Value* right = rhs->codegen();
-	if(left == 0){
-		errors++;
-		return reportError::ErrorV("Error in left operand of " + opr);
-	}
-	else if(right == 0){
-		errors++;
-		return reportError::ErrorV("Error in right operand of " + opr);
-	}
 	Value* v;
 	if (opr == "||"){
 		v = Builder.CreateOr(left,right,"ltcomparetmp");
@@ -385,13 +364,19 @@ Value* boolLiteral::codegen(){
 	bool val;
 	Value* v = ConstantInt::get(getGlobalContext(), llvm::APInt(1,false));
 	if(type=="value"){
-		if(value == "true") val = true;
-		else if (value == "false") val = false;
+		if(value == "true") val = 1;
+		else if (value == "false") val = 0;
 		v = ConstantInt::get(getGlobalContext(), llvm::APInt(1,val));
 	}
 	else if(type=="comp"){
 		Value* left = lhs->codegen();
 		Value* right = rhs->codegen();
+		if(lhs->getEtype() == exprType::location){
+			left = Builder.CreateLoad(left);
+		}
+		if(rhs->getEtype() == exprType::location){
+			right = Builder.CreateLoad(right);
+		}
 		string opr = op;
 		if(left == 0){
 			errors++;
@@ -433,6 +418,7 @@ Value* Prog::codegen(){
 	BasicBlock *mainStmtBlock = BasicBlock::Create(getGlobalContext(),"B1",MainF);
 	Builder.SetInsertPoint(mainStmtBlock);
 	V = statements->codegen();
+	Builder.CreateRetVoid();
 	return V;
 }
 void Prog::generateCode(){
@@ -455,8 +441,9 @@ Value* declarationBlock::codegen(){
 Value* Stmts::codegen(){
 	Value* V = ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));
 	for(auto cs : stmts){
-		if(cs->getName()!="None123456"){
-			string label = cs->getName();
+		if(cs->getLabel()!="None123456"){
+			cout << cs->getLabel() << endl;
+			string label = cs->getLabel();
 			Function * ThisFunction = MainF;
 			BasicBlock *newBlock = BasicBlock::Create(Context,label,ThisFunction);
 			Builder.CreateBr(newBlock);
@@ -476,6 +463,7 @@ Value* Stmts::codegen(){
 
 
 Value* printStmt::codegen(){
+	print_new_line = new_line;
 	Value* V = print_candidates->codegen();
 	return V;
 }
@@ -492,8 +480,12 @@ Value* printCand::codegen(){
 	vector<llvm::Type *> argTypes;
 	vector<Value* > Args;
 	if(type=="integer"){
+		stringLiteral* temp_str;
+		if(print_new_line==1)
+			temp_str = new stringLiteral(string("0%d\n0"));
+		else if(print_new_line==0)
+			temp_str = new stringLiteral(string("0%d0"));
 
-		stringLiteral* temp_str = new stringLiteral("%d");
 		//strlit
 		Value* tmp = temp_str->codegen();
 		if(tmp == 0){
@@ -510,7 +502,11 @@ Value* printCand::codegen(){
 		argTypes.push_back(tmp->getType());
 	}
 	else if(type=="string"){
-		stringLiteral* temp_str = new stringLiteral("%s");
+		stringLiteral* temp_str;
+		if(print_new_line==1)
+			temp_str = new stringLiteral(string("0%s\n0"));
+		else if(print_new_line==0)
+			temp_str = new stringLiteral(string("0%s0"));
 		//strlit
 		Value* tmp = temp_str->codegen();
 		if(tmp == 0){
@@ -528,7 +524,11 @@ Value* printCand::codegen(){
 	}
 	else if(type=="location"){
 
-		stringLiteral* temp_str = new stringLiteral("%d");
+		stringLiteral* temp_str;
+		if(print_new_line==1)
+			temp_str = new stringLiteral(string("0%d\n0"));
+		else if(print_new_line==0)
+			temp_str = new stringLiteral(string("0%d0"));
 		//strlit
 		Value* tmp = temp_str->codegen();
 		if(tmp == 0){
@@ -538,6 +538,7 @@ Value* printCand::codegen(){
 		argTypes.push_back(tmp->getType());
 		//location
 		tmp = loc->codegen();
+		tmp = Builder.CreateLoad(tmp);
 		if(tmp == 0){
 			return 0;
 		}
@@ -548,7 +549,7 @@ Value* printCand::codegen(){
 	llvm::ArrayRef<llvm::Type*>  argsRef(argTypes);
 	llvm::ArrayRef<llvm::Value*>  funcargs(Args);
 	llvm::FunctionType *FType = FunctionType::get(Type::getInt32Ty(Context), argsRef, false);
-	Constant* func = TheModule->getOrInsertFunction("printf", FType);
+	Constant* func = TheModule->getOrInsertFunction(string("printf"), FType);
 	Value* v = Builder.CreateCall(func, funcargs);
 	return v;
 }
@@ -558,12 +559,32 @@ Value* readStmt::codegen(){
 	return V;
 }
 
+
 Value* readCands::codegen(){
-	Value* V = ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));
-	for(auto cs : vars_list){
-		V = cs->codegen();
+	for (auto cs : vars_list){
+		Value* V = ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));
+		llvm::Type* ScanfArgs[] = { Type::getInt8PtrTy(Context) };
+		llvm::FunctionType *FType = FunctionType::get(Type::getInt32Ty(Context), ScanfArgs, true);
+		Constant* func = TheModule->getOrInsertFunction(string("scanf"), FType);
+		vector<Value* > Args;
+		stringLiteral* temp_str = new stringLiteral(string("0%d0"));
+		//strlit
+		Value* tmp = temp_str->codegen();
+		Args.push_back(tmp);
+		Value *IntPtr = Builder.CreateAlloca(Type::getInt32Ty(Context));
+		// location
+		Args.push_back(IntPtr);
+
+		llvm::ArrayRef<llvm::Value*>  funcargs(Args);
+		
+		Value* v = Builder.CreateCall(func, funcargs);
+		
+		Value* lhs_addr = cs->codegen();
+		Value* val = Builder.CreateLoad(IntPtr);
+		Builder.CreateStore(val, lhs_addr);
+		return v;
 	}
-	return V;
+	return ConstantInt::get(getGlobalContext(), llvm::APInt(32,1));;
 }
 
 
@@ -575,8 +596,8 @@ Value* ifElseStmt::codegen(){
 	}
 	Function * ThisFunction = MainF;
 	BasicBlock *ifBlock = BasicBlock::Create(Context,"if",ThisFunction);
-	BasicBlock *elseBlock = BasicBlock::Create(Context,"else");
-	BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
+	BasicBlock *elseBlock = BasicBlock::Create(Context,"else",ThisFunction);
+	BasicBlock *nextBlock = BasicBlock::Create(Context,"next",ThisFunction);
 	Builder.CreateCondBr(cond, ifBlock, elseBlock);
 	//begin if block
 	Builder.SetInsertPoint(ifBlock);
@@ -616,7 +637,7 @@ Value* whileStmt::codegen(){
 	}
 	Function * ThisFunction = MainF;
 	BasicBlock *whileBlock = BasicBlock::Create(Context,"while",ThisFunction);
-	BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
+	BasicBlock *nextBlock = BasicBlock::Create(Context,"next",ThisFunction);
 	Builder.CreateCondBr(cond, whileBlock, nextBlock);
 	//begin while block
 	Builder.SetInsertPoint(whileBlock);
@@ -624,10 +645,9 @@ Value* whileStmt::codegen(){
 	if(block == 0){
 		return 0;
 	}
+	cond = condition->codegen();
 	Builder.CreateCondBr(cond, whileBlock, nextBlock);
 
-	whileBlock = Builder.GetInsertBlock();
-
 	// begin the next block  	
 
 	Builder.SetInsertPoint(nextBlock);
@@ -635,125 +655,47 @@ Value* whileStmt::codegen(){
 	return V;
 }
 
-Value* forStmt::codegen(){
-	Value* cur = TheModule->getGlobalVariable(var->getVar());
-	if(cur==0){
-		errors++;
-		return reportError::ErrorV("Invalid Expression in the IF");
-	}
-	Function * ThisFunction = MainF;
-	BasicBlock *forBlock = BasicBlock::Create(Context,"for",ThisFunction);
-	BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
-	
-	Value* lhs = var->codegen(); // lhs load
 
-	Value* val = min_range->codegen(); // rhs load
-	if(min_range->getEtype() == exprType::location){
-		val = Builder.CreateLoad(val);
-	}
-	Builder.CreateStore(val, lhs);
-
-	Value* final = max_range->codegen(); // final value
-	if(max_range->getEtype() == exprType::location){
-		final = Builder.CreateLoad(final);
-	}
-	Value* cond = Builder.CreateICmpEQ(lhs, final,"lecomparetmp");
-
-	Builder.CreateCondBr(cond, nextBlock, forBlock);
-	
-	//begin if block
-	Builder.SetInsertPoint(forBlock);
-	
-	Value* ifval = body->codegen();
-	if(ifval == 0){
-		return 0;
-	}
-
-	//begin else block
-
-	lhs = var->codegen(); // lhs load
-	cur = Builder.CreateLoad(lhs);
-	Value* step_value;
-	if(flag){
-		step_value = step->codegen(); // step load
-		if(step->getEtype() == exprType::location){
-			step_value = Builder.CreateLoad(step_value);
-		}
-	}
-	else{
-		step_value = ConstantInt::get(getGlobalContext(), APInt(32,step_int));
-	}
-
-	val = Builder.CreateAdd(cur, step_value,"addEqualToTmp");
-	Builder.CreateStore(val, lhs);
-
-	final = max_range->codegen(); // final value
-	if(max_range->getEtype() == exprType::location){
-		final = Builder.CreateLoad(final);
-	}
-	cond = Builder.CreateICmpEQ(val, final,"lecomparetmp");
-	Builder.CreateCondBr(cond, nextBlock, forBlock);
-
-	// begin the next block  	
-	Builder.SetInsertPoint(nextBlock);
-	Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
-	return V;
-}
 Value* gotoStmt::codegen(){
-	// Value *cond;
-	// Function * ThisFunction = MainF;
-	// if(GlobalLTable.find(location) == GlobalLTable.end()){
-	// 	errors++;
-	// 	return reportError::ErrorV("Goto not supported for blocks declared after this.");
-	// }
-	// BasicBlock *Block = GlobalLTable[location];
-	// BasicBlock *nextBlock = BasicBlock::Create(Context,"next");
-	// if(condition!=NULL)
-	// 	Builder.CreateBr(Block);
-	// else{
-	// 	cond = condition->codegen();
-	// 	Builder.CreateCondBr(cond, Block, nextBlock);
-	// }
+	Value *cond;
+	Function * ThisFunction = MainF;
+	if(GlobalLTable.find(location) == GlobalLTable.end()){
+		errors++;
+		return reportError::ErrorV("Goto not supported for blocks declared after this.");
+	}
+	BasicBlock *Block = GlobalLTable[location];
+	BasicBlock *nextBlock = BasicBlock::Create(Context,"next", ThisFunction);
+	cout << "asdf" << endl;
+	if(condition==NULL)
+		Builder.CreateBr(Block);
+	else{
+		cond = condition->codegen();
+		Builder.CreateCondBr(cond, Block, nextBlock);
+	}
 	
-
-	// //begin if block
-
-	// Builder.CreateBr(nextBlock);
-
-	// // begin the next block  	
-
-	// Builder.SetInsertPoint(nextBlock);
-	// Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
-	// return V;
+	Builder.SetInsertPoint(nextBlock);
+	
+	Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+	return V;
 }
 Value* Assignment::codegen(){
-	Value* cur = TheModule->getGlobalVariable(loc->getVar());//lhs check
-	if(cur == 0){
-		errors++;
-		return reportError::ErrorV("Unknown Variable Name");
-	}
-
-	Value* lhs = loc->codegen(); // lhs load
-	cur = Builder.CreateLoad(lhs);
-
-	Value* val = expr->codegen(); // rhs load
+	Value* lhs_addr = loc->codegen(); // lhs load
+	
+	Value* rhs = expr->codegen(); // rhs load
 	if(expr->getEtype() == exprType::location){
-		val = Builder.CreateLoad(val);
-	}
-
-	if(val == 0){
-		errors++;
-		return reportError::ErrorV("Error in right hand side of the Assignment");
+		rhs = Builder.CreateLoad(rhs);
 	}
 
 	if(opr == "+="){
-		val = Builder.CreateAdd(cur, val,"addEqualToTmp");
+		Value* lhs_value = Builder.CreateLoad(lhs_addr);
+		rhs = Builder.CreateAdd(rhs, lhs_value,"addEqualToTmp");
 	}
 	else if (opr == "-="){
-		val = Builder.CreateSub(cur, val,"subEqualToTmp");
+		Value* lhs_value = Builder.CreateLoad(lhs_addr);
+		rhs = Builder.CreateAdd(rhs, lhs_value,"subEqualToTmp");
 	}
-	cur = Builder.CreateStore(val, lhs);
-	return cur;
+	Builder.CreateStore(rhs, lhs_addr);
+	return ConstantInt::get(getGlobalContext(), APInt(32,1));
 }
 
 
@@ -781,4 +723,98 @@ Value* Location::codegen(){
 		V = Builder.CreateGEP(V, array_index, var+"_Index");
 		return V;
 	}
+}
+
+Value* forStmt::codegen(){
+	Function * ThisFunction = MainF;
+	BasicBlock *forBlock = BasicBlock::Create(Context,"for",ThisFunction);
+	BasicBlock *nextBlock = BasicBlock::Create(Context,"next",ThisFunction);
+	BasicBlock *upperBB=Builder.GetInsertBlock();
+	Value* lhs_addr = var->codegen(); //get lhs addr
+	if(lhs_addr==0){
+		//error;
+	}
+	
+	Value* start_val = min_range->codegen(); // start
+	if(min_range->getEtype() == exprType::location){
+		start_val = Builder.CreateLoad(start_val);
+	}
+	Builder.CreateStore(start_val, lhs_addr);
+
+	Value* end_val = max_range->codegen(); // end
+	if(max_range->getEtype() == exprType::location){
+		end_val = Builder.CreateLoad(end_val);
+	}
+
+	Value* cond = Builder.CreateICmpEQ(start_val, end_val,"lecomparetmp");
+
+	Builder.CreateCondBr(cond, nextBlock, forBlock);
+	// Builder.CreateBr(forBlock);
+	//begin if block
+	Builder.SetInsertPoint(forBlock);
+	PHINode *Variable = Builder.CreatePHI(Type::getInt32Ty(llvm::getGlobalContext()), 2, var->getVar());
+  	Variable->addIncoming(start_val, upperBB);
+	Value* ifval = body->codegen();
+	if(ifval == 0){
+		return 0;
+	}
+
+	//begin else block
+
+	lhs_addr = var->codegen(); // lhs load
+	Value* lhs = Builder.CreateLoad(lhs_addr);
+	Value* step_value;
+	if(flag){
+		step_value = step->codegen(); // step load
+		if(step->getEtype() == exprType::location){
+			step_value = Builder.CreateLoad(step_value);
+		}
+	}
+	else{
+		step_value = ConstantInt::get(getGlobalContext(), APInt(32,step_int));
+	}
+
+	lhs = Builder.CreateAdd(lhs, step_value,"addEqualToTmp");
+	Builder.CreateStore(lhs, lhs_addr);
+
+	end_val = max_range->codegen(); // end
+	if(max_range->getEtype() == exprType::location){
+		end_val = Builder.CreateLoad(end_val);
+	}
+	cond = Builder.CreateICmpEQ(lhs, end_val,"lecomparetmp");
+	BasicBlock *endBB = Builder.GetInsertBlock();
+	Builder.CreateCondBr(cond, nextBlock, forBlock);
+	// begin the next block  
+	Builder.SetInsertPoint(nextBlock);
+	Variable->addIncoming(lhs, endBB);
+
+	Value *V = ConstantInt::get(getGlobalContext(), APInt(32,0));
+	return V;
+}
+Value* fieldDecl::codegen(){
+  for(auto cs : var_list)
+  {
+    class Var* var=cs;
+    llvm::Type *ty;
+    ty=Type::getInt32Ty(Context);
+    if(cs->isArray()==false)
+    {
+      TheModule->getOrInsertGlobal(cs->getName(),Builder.getInt32Ty());
+      PointerType* ptrTy = PointerType::get(ty,0);
+      GlobalVariable* gv = TheModule->getNamedGlobal(cs->getName());
+      gv->setLinkage(GlobalValue::CommonLinkage);
+      ConstantInt* const_int_val = ConstantInt::get(Context, APInt(32,0));
+      gv->setInitializer(const_int_val);
+    }
+    else
+    {
+      int arrlg=cs->getLength();
+      ArrayType* arrType= ArrayType::get(ty,arrlg);
+      PointerType* PointerTy_1 = PointerType::get(ArrayType::get(ty,arrlg),0);
+      GlobalVariable* gv = new GlobalVariable(*TheModule,arrType,false,GlobalValue::CommonLinkage,0,cs->getName());
+      gv->setInitializer(ConstantAggregateZero::get(arrType));
+    }
+  }
+  Value* v = ConstantInt::get(getGlobalContext(), APInt(32,500));
+  return v;
 }

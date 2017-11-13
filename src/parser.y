@@ -187,7 +187,7 @@ Arith_Factor:
 	| Arith_Factor1 {$$=$1;}
 	;
 Arith_Factor1:
-	OP Arith_Factor CP {$$ = $2;}
+	OP Arith_Expression CP {$$ = $2;}
 	| INTEGER {$$ = new intLiteral(stoi($1));}
 	| Variable {$$ = $1;}
 	;
@@ -237,11 +237,12 @@ int main(int argc, char *argv[])
 	yyin = fopen(argv[1], "r");
 
 	yyparse();
-	
+	/*
 	if(start){
 		Visitor * visitor = new interVisitor();
 		start->accept(visitor);
 	}
+	*/
 	if(start){
 		start->codegen();	
 		cout << errors << endl;
