@@ -224,13 +224,7 @@ Bool_Literal:
 
 int main(int argc, char *argv[])
 {
-	if (argc == 1 ) {
-		fprintf(stderr, "Correct usage: bcc filename\n");
-		exit(1);
-	}
-
-	if (argc > 2) {
-		fprintf(stderr, "Passing more arguments than necessary.\n");
+	if (argc !=2) {
 		fprintf(stderr, "Correct usage: bcc filename\n");
 	}
 
@@ -245,7 +239,6 @@ int main(int argc, char *argv[])
 	*/
 	if(start){
 		start->codegen();	
-		cout << errors << endl;
 		if(errors ==0){
 			start->generateCode();
 		}
