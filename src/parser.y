@@ -188,7 +188,7 @@ Arith_Factor:
 	| Arith_Factor1 {$$=$1;}
 	;
 Arith_Factor1:
-	OP Arith_Factor CP {$$ = $2;}
+	OP Arith_Expression CP {$$ = $2;}
 	| INTEGER {$$ = new intLiteral(stoi($1));}
 	| Variable {$$ = $1;}
 	;
