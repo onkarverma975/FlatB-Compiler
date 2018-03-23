@@ -1,5 +1,9 @@
-# parser-onkarverma975
-parser-onkarverma975 created by GitHub Classroom
+# FlatB Compiler
+
+FlatB is a very basic language built to explore the concepts of compiler design and implementation.
+
+The following are the various features.
+
 1. Data Types
 
 Inegers and Array of Integers.
